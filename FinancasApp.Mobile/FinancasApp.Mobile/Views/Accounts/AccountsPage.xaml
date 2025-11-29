@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ContentPage x:Class="FinancasApp.Mobile.Views.Accounts.AccountsPage"
+             xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             Title="Contas"
+             BackgroundColor="#F8F9FA">
+
+    <RefreshView Command="{Binding LoadAccountsCommand}" IsRefreshing="{Binding IsBusy}">
+        <StackLayout Padding="20" Spacing="15">
+
+            <!-- SALDO TOTAL -->
+            <Frame BackgroundColor="#512BD4" CornerRadius="16" Padding="20">
+                <Grid>
+                    <Label Text="Saldo Total" TextColor="White" FontSize="16" />
+                    <Label Grid.Row="1" Text="{Binding TotalBalance, StringFormat='{0:C}'}" 
+                           TextColor="White" FontSize="28" FontAttributes="Bold" />
+                </Grid>
+            </Frame>
+
+            <!-- LISTA DE CONTAS -->
+            <CollectionView ItemsSource="{Binding Accounts}">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate>
+                        <SwipeView>
+                            <SwipeView.RightItems>
+                                <SwipeItems>
+                                    <SwipeItem Text="Excluir"
+                                               BackgroundColor="Red"
+                                               Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.DeleteAccountCommand}"
+                                               CommandParameter="{Binding}" />
+                                </SwipeItems>
+                            </SwipeView.RightItems>
+                            <Frame BackgroundColor="White" CornerRadius="12" Padding="15" HasShadow="True">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <StackLayout>
+                                        <Label Text="{Binding Name}" FontAttributes="Bold" FontSize="16" />
+                                        <Label Text="{Binding AccountType}" FontSize="12" TextColor="Gray" />
+                                    </StackLayout>
+                                    <Label Grid.Column="1"
+                                           Text="{Binding Balance, StringFormat='{0:C}'}"
+                                           TextColor="{Binding Balance, Converter={StaticResource AmountToColorConverter}}"
+                                           FontSize="16"
+                                           FontAttributes="Bold"
+                                           VerticalOptions="Center" />
+                                </Grid>
+                            </Frame>
+                        </SwipeView>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+
+            <!-- BOTÃO ADICIONAR -->
+            <Button Text="+ Nova Conta"
+                    Command="{Binding AddAccountCommand}"
+                    BackgroundColor="#512BD4"
+                    TextColor="White"
+                    CornerRadius="30"
+                    HeightRequest="56"
+                    HorizontalOptions="Center" />
+        </StackLayout>
+    </RefreshView>
+</ContentPage>

@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage x:Class="FinancasApp.Mobile.Views.CreditCards.CreditCardsPage"
+             xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             Title="Cartões"
+             BackgroundColor="#F8F9FA">
+
+    <RefreshView Command="{Binding LoadCardsCommand}" IsRefreshing="{Binding IsBusy}">
+        <StackLayout Padding="20" Spacing="15">
+
+            <!-- ADICIONAR CARTÃO -->
+            <Button Text="+ Novo Cartão"
+                    Command="{Binding AddCardCommand}"
+                    BackgroundColor="#512BD4"
+                    TextColor="White"
+                    CornerRadius="30"
+                    HeightRequest="56"
+                    HorizontalOptions="Center" />
+
+            <!-- LISTA DE CARTÕES -->
+            <CollectionView ItemsSource="{Binding Cards}">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate>
+                        <Frame BackgroundColor="White" CornerRadius="16" Padding="15" HasShadow="True">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <StackLayout>
+                                    <Label Text="{Binding Name}" FontAttributes="Bold" FontSize="16" />
+                                    <Label Text="{Binding Last4Digits, StringFormat='•••• {0}'}" FontSize="14" TextColor="Gray" />
+                                    <Label Text="{Binding CurrentInvoice, StringFormat='Fatura: {0:C}'}" 
+                                           TextColor="{Binding CurrentInvoice, Converter={StaticResource AmountToColorConverter}}" />
+                                    <Label Text="{Binding DueDay, StringFormat='Vence dia {0}'}" FontSize="12" />
+                                </StackLayout>
+                                <Label Grid.Column="1"
+                                       Text="{Binding CreditLimit, StringFormat='{0:C}'}"
+                                       FontSize="16"
+                                       FontAttributes="Bold"
+                                       VerticalOptions="Center" />
+                            </Grid>
+                            <Frame.GestureRecognizers>
+                                <TapGestureRecognizer 
+                                    Command="{Binding ViewInvoiceCommand}"
+                                    CommandParameter="{Binding}" />
+                            </Frame.GestureRecognizers>
+                        </Frame>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+        </StackLayout>
+    </RefreshView>
+</ContentPage>

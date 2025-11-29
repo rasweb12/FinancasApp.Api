@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Shell
+    x:Class="FinancasApp.Mobile.AppShell"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:auth="clr-namespace:FinancasApp.Mobile.Views.Auth"
+    xmlns:dashboard="clr-namespace:FinancasApp.Mobile.Views.Dashboard"
+    xmlns:accounts="clr-namespace:FinancasApp.Mobile.Views.Accounts"
+    xmlns:creditcards="clr-namespace:FinancasApp.Mobile.Views.CreditCards"
+    xmlns:reports="clr-namespace:FinancasApp.Mobile.Views.Reports">
+
+    <!-- 🔐 PÁGINAS DE LOGIN (não aparecem no menu) -->
+
+    <ShellContent
+        Route="login"
+        FlyoutItemIsVisible="False"
+        ContentTemplate="{DataTemplate auth:LoginPage}" />
+
+    <ShellContent 
+        Route="register"
+        FlyoutItemIsVisible="False"
+        ContentTemplate="{DataTemplate auth:RegisterPage}" />
+
+    <!-- 🌟 ÁREA PRINCIPAL DO APLICATIVO -->
+
+    <FlyoutItem Title="Início" Icon="ic_home.png">
+        <ShellContent
+            Route="home"
+            ContentTemplate="{DataTemplate dashboard:HomePage}" />
+    </FlyoutItem>
+
+    <FlyoutItem Title="Contas" Icon="ic_accounts.png">
+        <ShellContent
+            Route="accounts"
+            ContentTemplate="{DataTemplate accounts:AccountsPage}" />
+    </FlyoutItem>
+
+    <FlyoutItem Title="Cartões" Icon="ic_creditcard.png">
+        <ShellContent
+            Route="creditcards"
+            ContentTemplate="{DataTemplate creditcards:CreditCardsPage}" />
+    </FlyoutItem>
+
+    <FlyoutItem Title="Relatórios" Icon="ic_reports.png">
+        <ShellContent
+            Route="reports"
+            ContentTemplate="{DataTemplate reports:ReportsPage}" />
+    </FlyoutItem>
+</Shell>

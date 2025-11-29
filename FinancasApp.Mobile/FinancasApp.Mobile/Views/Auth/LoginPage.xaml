@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage x:Class="FinancasApp.Mobile.Views.Auth.LoginPage"
+             xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:FinancasApp.Mobile.ViewModels"
+             Title="Login"
+             BackgroundColor="#F8F9FA">
+
+    <ScrollView>
+        <StackLayout Padding="30" Spacing="20" VerticalOptions="Center">
+
+            <!-- Logo -->
+            <Image Source="logo.png" HeightRequest="100" HorizontalOptions="Center" />
+
+            <!-- Título -->
+            <Label Text="Bem-vindo ao FinançasApp"
+                   FontSize="24"
+                   FontAttributes="Bold"
+                   HorizontalOptions="Center"
+                   TextColor="#512BD4" />
+
+            <!-- Email -->
+            <Entry Placeholder="E-mail"
+                   Text="{Binding Email}"
+                   Keyboard="Email"
+                   FontSize="16" />
+
+            <!-- Senha -->
+            <Entry Placeholder="Senha"
+                   Text="{Binding Password}"
+                   IsPassword="True"
+                   FontSize="16" />
+
+            <!-- Botão Login -->
+            <Button Text="Entrar"
+                    Command="{Binding LoginCommand}"
+                    BackgroundColor="#512BD4"
+                    TextColor="White"
+                    CornerRadius="10"
+                    FontAttributes="Bold" />
+
+            <!-- Biometria -->
+            <Label Text="Entrar com biometria"
+                   TextColor="#512BD4"
+                   HorizontalOptions="Center">
+                <Label.GestureRecognizers>
+                    <TapGestureRecognizer Command="{Binding BiometricLoginCommand}" />
+                </Label.GestureRecognizers>
+            </Label>
+
+            <!-- Registrar -->
+            <StackLayout Orientation="Horizontal" HorizontalOptions="Center">
+                <Label Text="Novo aqui? " TextColor="Gray" />
+                <Label Text="Criar conta"
+                       TextColor="#512BD4">
+                    <Label.GestureRecognizers>
+                        <TapGestureRecognizer Command="{Binding RegisterCommand}" />
+                    </Label.GestureRecognizers>
+                </Label>
+            </StackLayout>
+
+            <!-- Indicador de carregamento -->
+            <ActivityIndicator IsRunning="{Binding IsBusy}"
+                               IsVisible="{Binding IsBusy}"
+                               Color="#512BD4" />
+        </StackLayout>
+    </ScrollView>
+</ContentPage>

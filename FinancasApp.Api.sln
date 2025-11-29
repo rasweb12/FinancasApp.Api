@@ -1,0 +1,32 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36518.9
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FinancasApp.Api", "FinancasApp.Api\FinancasApp.Api.csproj", "{2950A6F8-9AED-40DF-9844-FBBC085E2D93}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FinancasApp.Mobile", "FinancasApp.Mobile\FinancasApp.Mobile\FinancasApp.Mobile.csproj", "{239F431F-22DD-E97A-82AB-B40AFB59B5BA}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{2950A6F8-9AED-40DF-9844-FBBC085E2D93}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2950A6F8-9AED-40DF-9844-FBBC085E2D93}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2950A6F8-9AED-40DF-9844-FBBC085E2D93}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2950A6F8-9AED-40DF-9844-FBBC085E2D93}.Release|Any CPU.Build.0 = Release|Any CPU
+		{239F431F-22DD-E97A-82AB-B40AFB59B5BA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{239F431F-22DD-E97A-82AB-B40AFB59B5BA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{239F431F-22DD-E97A-82AB-B40AFB59B5BA}.Debug|Any CPU.Deploy.0 = Debug|Any CPU
+		{239F431F-22DD-E97A-82AB-B40AFB59B5BA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{239F431F-22DD-E97A-82AB-B40AFB59B5BA}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {B56B4267-8446-44D8-AA22-DF4215FB3BB9}
+	EndGlobalSection
+EndGlobal

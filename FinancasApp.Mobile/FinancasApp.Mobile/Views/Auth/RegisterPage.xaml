@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage x:Class="FinancasApp.Mobile.Views.Auth.RegisterPage"
+             xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             Title="Criar Conta"
+             BackgroundColor="#F8F9FA">
+
+    <ScrollView>
+        <StackLayout Padding="30" Spacing="20">
+
+            <Label Text="Criar sua conta" FontSize="24" FontAttributes="Bold" HorizontalOptions="Center" />
+
+            <Frame BackgroundColor="White" CornerRadius="12" Padding="15">
+                <Entry Placeholder="Nome completo" />
+            </Frame>
+
+            <Frame BackgroundColor="White" CornerRadius="12" Padding="15">
+                <Entry Placeholder="E-mail" Keyboard="Email" />
+            </Frame>
+
+            <Frame BackgroundColor="White" CornerRadius="12" Padding="15">
+                <Entry Placeholder="Senha" IsPassword="True" />
+            </Frame>
+
+            <Frame BackgroundColor="White" CornerRadius="12" Padding="15">
+                <Entry Placeholder="Confirmar senha" IsPassword="True" />
+            </Frame>
+
+            <Button Text="Criar conta"
+                    BackgroundColor="#512BD4"
+                    TextColor="White"
+                    CornerRadius="30"
+                    HeightRequest="56"
+                    FontAttributes="Bold" />
+
+            <Button Text="Já tem conta? Entrar"
+                    BackgroundColor="Transparent"
+                    TextColor="#512BD4"
+                    Command="{Binding BackToLoginCommand}" />
+        </StackLayout>
+    </ScrollView>
+</ContentPage>

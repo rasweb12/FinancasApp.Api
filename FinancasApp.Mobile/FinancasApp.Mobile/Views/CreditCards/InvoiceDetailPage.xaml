@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage x:Class="FinancasApp.Mobile.Views.CreditCards.InvoiceDetailPage"
+             xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             Title="Fatura"
+             BackgroundColor="#F8F9FA">
+
+    <ScrollView>
+        <StackLayout Padding="20" Spacing="15">
+
+            <!-- CABEÇALHO -->
+            <Frame BackgroundColor="#512BD4" CornerRadius="16" Padding="20">
+                <StackLayout>
+                    <Label Text="{Binding CardName}" TextColor="White" FontSize="18" FontAttributes="Bold" />
+                    <Label Text="{Binding Invoice.ClosingDate, StringFormat='Fechamento: {0:dd/MM/yyyy}'}" TextColor="White" />
+                    <Label Text="{Binding Invoice.DueDate, StringFormat='Vencimento: {0:dd/MM/yyyy}'}" TextColor="White" />
+                    <Label Text="{Binding Invoice.TotalAmount, StringFormat='Total: {0:C}'}" 
+                           TextColor="White" FontSize="24" FontAttributes="Bold" />
+                    <Label Text="{Binding Invoice.Status}" 
+                           TextColor="{Binding Invoice.Status, Converter={StaticResource StatusToColorConverter}}" />
+                </StackLayout>
+            </Frame>
+
+            <!-- PAGAMENTO PARCIAL -->
+            <Frame BackgroundColor="White" CornerRadius="12" Padding="15" HasShadow="True" IsVisible="{Binding Invoice.IsPaid, Converter={StaticResource InverseBooleanConverter}}">
+                <StackLayout>
+                    <Label Text="Pagar valor parcial" FontAttributes="Bold" />
+                    <Entry Placeholder="R$ 0,00" Text="{Binding PartialPayment}" Keyboard="Numeric" />
+                    <Button Text="Pagar" Command="{Binding PayPartialCommand}" BackgroundColor="#28A745" TextColor="White" />
+                </StackLayout>
+            </Frame>
+
+            <!-- PARCELAS -->
+            <Label Text="Parcelas" FontAttributes="Bold" FontSize="16" />
+            <CollectionView ItemsSource="{Binding Installments}">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate>
+                        <Frame BackgroundColor="White" CornerRadius="12" Padding="12" Margin="0,0,0,8">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <StackLayout>
+                                    <Label Text="{Binding Description}" FontAttributes="Bold" />
+                                    <Label Text="{Binding InstallmentNumber, StringFormat='Parcela {0}/{1}'}" FontSize="12" />
+                                </StackLayout>
+                                <Label Grid.Column="1" Text="{Binding Amount, StringFormat='{0:C}'}" FontAttributes="Bold" />
+                            </Grid>
+                        </Frame>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+
+            <!-- BOTÃO VOLTAR -->
+            <Button Text="Voltar" Command="{Binding BackCommand}" BackgroundColor="#6C757D" TextColor="White" />
+        </StackLayout>
+    </ScrollView>
+</ContentPage>

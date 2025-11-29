@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage x:Class="FinancasApp.Mobile.Views.Reports.ReportsPage"
+             xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:lvc="clr-namespace:LiveChartsCore.SkiaSharpView.Maui;assembly=LiveChartsCore.SkiaSharpView.Maui"
+             Title="Relatórios"
+             BackgroundColor="#F8F9FA">
+
+    <ScrollView>
+        <StackLayout Padding="20" Spacing="30">
+
+            <!-- GRAFICO PIZZA -->
+            <Frame BackgroundColor="White" CornerRadius="16" Padding="15" HasShadow="True">
+                <StackLayout>
+                    <Label Text="Gastos por Categoria" FontAttributes="Bold" FontSize="16" HorizontalOptions="Center" />
+                    <lvc:PieChart Series="{Binding CategorySeries}"
+                                  LegendPosition="Bottom"
+                                  HeightRequest="300" />
+                </StackLayout>
+            </Frame>
+
+            <!-- GRAFICO BARRAS -->
+            <Frame BackgroundColor="White" CornerRadius="16" Padding="15" HasShadow="True">
+                <StackLayout>
+                    <Label Text="Gastos Diários (7 dias)" FontAttributes="Bold" FontSize="16" HorizontalOptions="Center" />
+                    <lvc:CartesianChart Series="{Binding DailySeries}"
+                                        XAxes="{Binding XAxes}"
+                                        YAxes="{Binding YAxes}"
+                                        HeightRequest="250" />
+                </StackLayout>
+            </Frame>
+
+            <!-- GRAFICO LINHA -->
+            <Frame BackgroundColor="White" CornerRadius="16" Padding="15" HasShadow="True">
+                <StackLayout>
+                    <Label Text="Evolução do Saldo" FontAttributes="Bold" FontSize="16" HorizontalOptions="Center" />
+                    <lvc:CartesianChart Series="{Binding BalanceSeries}"
+                                        XAxes="{Binding XAxesMonth}"
+                                        YAxes="{Binding YAxesMoney}"
+                                        HeightRequest="250" />
+                </StackLayout>
+            </Frame>
+
+            <!-- RESUMO -->
+            <Frame BackgroundColor="#512BD4" CornerRadius="16" Padding="20">
+                <Grid>
+                    <Label Text="Resumo do Mês" TextColor="White" FontSize="18" FontAttributes="Bold" />
+                    <Label Grid.Column="1" Text="{Binding MonthlyTotal, StringFormat='{0:C}'}"
+                           TextColor="White" FontSize="24" FontAttributes="Bold" HorizontalOptions="End" />
+                </Grid>
+            </Frame>
+        </StackLayout>
+    </ScrollView>
+</ContentPage>

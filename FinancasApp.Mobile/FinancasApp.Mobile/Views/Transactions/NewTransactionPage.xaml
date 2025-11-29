@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage x:Class="FinancasApp.Mobile.Views.Transactions.NewTransactionPage"
+             xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:converters="clr-namespace:FinancasApp.Mobile.Converters"
+             Title="Nova Transação"
+             BackgroundColor="#F8F9FA">
+
+    <ScrollView>
+        <StackLayout Padding="20" Spacing="15">
+
+            <!-- TIPO (Picker em vez de SegmentedControl) -->
+            <Label Text="Tipo" FontAttributes="Bold" />
+            <Picker ItemsSource="{Binding TransactionTypes}"
+                    SelectedItem="{Binding SelectedType}"
+                    BackgroundColor="White"
+                    Title="Selecione o tipo" />
+
+            <!-- VALOR -->
+            <Entry Placeholder="Valor (R$)"
+                   Text="{Binding Amount, StringFormat='{0:F2}'}"
+                   Keyboard="Numeric"
+                   FontSize="18" />
+
+            <!-- DATA -->
+            <Label Text="Data" FontAttributes="Bold" />
+            <DatePicker Date="{Binding Date}"
+                        Format="dd/MM/yyyy"
+                        BackgroundColor="White" />
+
+            <!-- DESCRIÇÃO -->
+            <Label Text="Descrição" FontAttributes="Bold" />
+            <Entry Placeholder="Ex: Supermercado, Conta de luz..."
+                   Text="{Binding Description}"
+                   BackgroundColor="White" />
+
+            <!-- CATEGORIA -->
+            <Label Text="Categoria" FontAttributes="Bold" />
+            <Picker ItemsSource="{Binding Categories}"
+                    SelectedItem="{Binding SelectedCategory}"
+                    BackgroundColor="White"
+                    Title="Selecione a categoria" />
+
+            <!-- TAGS -->
+            <Label Text="Tags" FontAttributes="Bold" />
+            <CollectionView ItemsSource="{Binding Tags}"
+                            HeightRequest="80">
+                <CollectionView.ItemsLayout>
+                    <LinearItemsLayout Orientation="Horizontal" />
+                </CollectionView.ItemsLayout>
+                <CollectionView.ItemTemplate>
+                    <DataTemplate>
+                        <Frame BackgroundColor="{Binding IsSelected, Converter={StaticResource BoolToColorConverter}}"
+                               CornerRadius="20"
+                               Padding="12,6"
+                               Margin="4">
+                            <Label Text="{Binding Name}"
+                                   TextColor="{Binding IsSelected, Converter={StaticResource BoolToColorConverter}, ConverterParameter=Inverse}" />
+                            <Frame.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.ToggleTagCommand}"
+                                                      CommandParameter="{Binding}" />
+                            </Frame.GestureRecognizers>
+                        </Frame>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+
+            <!-- PARCELAMENTO -->
+            <Switch IsToggled="{Binding IsInstallment}" OnColor="#512BD4" />
+            <Label Text="Parcelar?" IsVisible="{Binding IsInstallment}" />
+
+            <Entry Placeholder="Nº de parcelas"
+                   Text="{Binding Installments}"
+                   IsVisible="{Binding IsInstallment}"
+                   Keyboard="Numeric"
+                   BackgroundColor="White" />
+
+            <!-- ANEXO -->
+            <Button Text="📷 Anexar comprovante"
+                    Command="{Binding AttachReceiptCommand}"
+                    BackgroundColor="#6C757D"
+                    TextColor="White"
+                    CornerRadius="8" />
+
+            <!-- SALVAR -->
+            <Button Text="💾 Salvar"
+                    Command="{Binding SaveCommand}"
+                    BackgroundColor="#28A745"
+                    TextColor="White"
+                    CornerRadius="12"
+                    FontAttributes="Bold"
+                    IsEnabled="{Binding IsValid}" />
+
+            <!-- LOADING -->
+            <ActivityIndicator IsRunning="{Binding IsBusy}"
+                               IsVisible="{Binding IsBusy}"
+                               Color="#512BD4" />
+        </StackLayout>
+    </ScrollView>
+</ContentPage>
