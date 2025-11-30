@@ -1,4 +1,5 @@
-﻿using SQLite;
+﻿// Models/Local/BaseEntity.cs — MANTENHA EXATAMENTE ASSIM
+using SQLite;
 
 namespace FinancasApp.Mobile.Models.Local
 {
@@ -7,13 +8,10 @@ namespace FinancasApp.Mobile.Models.Local
         [PrimaryKey]
         public Guid Id { get; set; }
 
-        // Controle de sincronização
-        public bool IsDirty { get; set; } = false;
-
+        public bool IsDirty { get; set; } = true;
         public bool IsDeleted { get; set; } = false;
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
     }
 }

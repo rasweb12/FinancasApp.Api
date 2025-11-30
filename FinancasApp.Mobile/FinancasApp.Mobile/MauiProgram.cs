@@ -30,7 +30,7 @@ public static class MauiProgram
 
         builder
             .UseMauiApp<App>()
-            .UseSkiaSharp(true) // Ativa SkiaSharp globalmente (LiveCharts, etc.)
+            .UseSkiaSharp() // ← CORRIGIDO: sem parâmetro booleano em .NET 9
             .ConfigureFonts(fonts =>
             {
                 fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
@@ -38,86 +38,68 @@ public static class MauiProgram
                 fonts.AddFont("MaterialIcons-Regular.ttf", "MaterialIcons");
             });
 
-        // LiveChartsCore + Tema Claro
         LiveCharts.Configure(config =>
-            config
-                .AddSkiaSharp()
-                .AddDefaultMappers()
-                .AddLightTheme());
+            config.AddSkiaSharp().AddDefaultMappers().AddLightTheme());
 
-        // Logging (Debug + Console em desenvolvimento)
         builder.Logging.AddDebug();
 #if DEBUG
         builder.Logging.AddConsole();
 #endif
 
-        // ========================================
-        // HttpClient + Refit (com JWT automático)
-        // ========================================
+        // Refit + JWT automático
         builder.Services.AddHttpClient("ApiClient", client =>
         {
-            client.BaseAddress = new Uri("https://localhost:7001"); // Mude para produção depois
+            client.BaseAddress = new Uri("https://localhost:7001");
             client.Timeout = TimeSpan.FromSeconds(30);
         });
 
         builder.Services.AddRefitClient<IApiService>(new RefitSettings
         {
-            AuthorizationHeaderValueGetter = async (msg, cancellationToken) =>
-            {
-                var token = await SecureStorage.Default.GetAsync("jwt_token");
-                return string.IsNullOrEmpty(token) ? string.Empty : token;
-            }
+            AuthorizationHeaderValueGetter = async (_, ct) =>
+                await SecureStorage.Default.GetAsync("jwt_token") ?? string.Empty
         })
         .ConfigureHttpClient(c => c.BaseAddress = new Uri("https://localhost:7001"))
         .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
         {
-            ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true // Aceita certificado dev (remover em prod)
+            ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
         });
 
-        // ========================================
-        // SQLite + Banco de Dados Local
-        // ========================================
+        // SQLite Connection
         var dbPath = Path.Combine(FileSystem.AppDataDirectory, "financas.db3");
-
         builder.Services.AddSingleton<SQLiteAsyncConnection>(sp =>
         {
-            var connection = new SQLiteAsyncConnection(dbPath);
-
-            // Criação automática das tabelas (com await seguro)
-            Task.Run(async () =>
-            {
-                await connection.CreateTableAsync<AccountLocal>();
-                await connection.CreateTableAsync<TransactionLocal>();
-                await connection.CreateTableAsync<CreditCardLocal>();
-                await connection.CreateTableAsync<InvoiceLocal>();
-            }).GetAwaiter().GetResult();
-
-            return connection;
+            var path = Path.Combine(FileSystem.AppDataDirectory, "financas.db3");
+            var conn = new SQLiteAsyncConnection(path);
+            conn.CreateTablesAsync<AccountLocal, TransactionLocal, CreditCardLocal, InvoiceLocal>().Wait();
+            return conn;
         });
 
-        // ========================================
-        // Repositórios Locais (BaseRepository + Específicos)
-        // ========================================
-        builder.Services.AddScoped<IBaseRepository<AccountLocal>, AccountRepository>();
-        builder.Services.AddScoped<IBaseRepository<TransactionLocal>, TransactionRepository>();
-        builder.Services.AddScoped<IBaseRepository<CreditCardLocal>, CreditCardRepository>();
-        builder.Services.AddScoped<IBaseRepository<InvoiceLocal>, InvoiceRepository>();
+        // Repositórios (CORRIGIDO: nomes reais)
+        builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
+        builder.Services.AddScoped<SQLiteAsyncConnection>(sp =>
+        {
+            var path = Path.Combine(FileSystem.AppDataDirectory, "financas.db3");
+            var conn = new SQLiteAsyncConnection(path);
+            conn.CreateTablesAsync<
+                AccountLocal,
+                TransactionLocal,
+                CreditCardLocal,
+                InvoiceLocal>().Wait();
+            return conn;
+        });
+        builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
 
-        // ========================================
-        // Serviços Principais
-        // ========================================
+        // Serviços
         builder.Services.AddSingleton<ILocalStorageService, SQLiteStorageService>();
         builder.Services.AddSingleton<IAuthService, AuthService>();
         builder.Services.AddSingleton<INavigationService, NavigationService>();
-
-        // Sync Services
         builder.Services.AddSingleton<ISyncService, SyncService>();
+
+        // Sync Services individuais
         builder.Services.AddSingleton<IInvoiceSyncService, InvoiceSyncService>();
         builder.Services.AddSingleton<ITransactionSyncService, TransactionSyncService>();
 
-        // ========================================
-        // ViewModels (Transient = nova instância por página)
-        // ========================================
+        // ViewModels
         builder.Services.AddTransient<LoginViewModel>();
         builder.Services.AddTransient<RegisterViewModel>();
         builder.Services.AddTransient<HomeViewModel>();
@@ -127,9 +109,7 @@ public static class MauiProgram
         builder.Services.AddTransient<InvoiceDetailViewModel>();
         builder.Services.AddTransient<ReportsViewModel>();
 
-        // ========================================
-        // Views (Páginas)
-        // ========================================
+        // Views
         builder.Services.AddTransient<LoginPage>();
         builder.Services.AddTransient<RegisterPage>();
         builder.Services.AddTransient<HomePage>();
@@ -138,16 +118,10 @@ public static class MauiProgram
         builder.Services.AddTransient<CreditCardsPage>();
         builder.Services.AddTransient<InvoiceDetailPage>();
         builder.Services.AddTransient<ReportsPage>();
-
-        // Shell (Singleton)
         builder.Services.AddSingleton<AppShell>();
 
-        // App principal
         builder.Services.AddSingleton<App>();
 
-        // ========================================
-        // Finalização
-        // ========================================
         return builder.Build();
     }
 }

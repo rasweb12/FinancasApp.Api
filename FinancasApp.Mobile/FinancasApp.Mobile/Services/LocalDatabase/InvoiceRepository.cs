@@ -4,17 +4,12 @@ using SQLite;
 
 namespace FinancasApp.Mobile.Services.LocalDatabase;
 
-public class InvoiceRepository : BaseRepository<InvoiceLocal>, IBaseRepository<InvoiceLocal>
+public class InvoiceRepository : BaseRepository<InvoiceLocal>
 {
-    public InvoiceRepository(SQLiteAsyncConnection db) : base(db)
-    {
-    }
+    public InvoiceRepository(SQLiteAsyncConnection db) : base(db) { }
 
-    // Métodos específicos de Invoice (se precisar)
-    public async Task<List<InvoiceLocal>> GetPendingAsync()
-    {
-        return await _db.Table<InvoiceLocal>()
-            .Where(i => i.SyncStatus == SyncStatus.Pending)
-            .ToListAsync();
-    }
+    public Task<List<InvoiceLocal>> GetPendingAsync() =>
+        _db.Table<InvoiceLocal>()
+           .Where(i => i.SyncStatus == SyncStatus.Pending)
+           .ToListAsync();
 }

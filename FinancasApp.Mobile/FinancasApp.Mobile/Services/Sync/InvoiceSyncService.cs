@@ -1,98 +1,81 @@
-﻿using FinancasApp.Mobile.Models.Local;
-using FinancasApp.Mobile.Models.DTOs;
+﻿// Services/Sync/InvoiceSyncService.cs
 using FinancasApp.Mobile.Mappers;
+using FinancasApp.Mobile.Models.Local;
 using FinancasApp.Mobile.Services.Api;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using FinancasApp.Mobile.Data;
+using FinancasApp.Mobile.Services.LocalDatabase;
 
-namespace FinancasApp.Mobile.Services.Sync
+namespace FinancasApp.Mobile.Services.Sync;
+
+public interface IInvoiceSyncService
 {
-    public class InvoiceSyncService
+    Task SyncAsync();
+}
+
+public class InvoiceSyncService : IInvoiceSyncService
+{
+    private readonly IRepository<InvoiceLocal> _repo;
+    private readonly InvoiceApiService _api;
+
+    public InvoiceSyncService(IRepository<InvoiceLocal> repo, InvoiceApiService api)
     {
-        private readonly InvoiceLocalRepository _localRepo;
-        private readonly InvoiceApiService _apiService;
+        _repo = repo;
+        _api = api;
+    }
 
-        public InvoiceSyncService(
-            InvoiceLocalRepository localRepo,
-            InvoiceApiService apiService)
+    public async Task SyncAsync()
+    {
+        await PushAsync();
+        await PullAsync();
+    }
+
+    private async Task PushAsync()
+    {
+        var dirty = await _repo.GetDirtyAsync();
+        foreach (var local in dirty)
         {
-            _localRepo = localRepo;
-            _apiService = apiService;
-        }
-
-        // ---------------------------------------------------------------------
-        // 1) Enviar INVOICES locais para API
-        // ---------------------------------------------------------------------
-        public async Task PushAsync()
-        {
-            var dirtyInvoices = await _localRepo.GetDirtyAsync();
-            if (!dirtyInvoices.Any()) return;
-
-            foreach (var local in dirtyInvoices)
+            try
             {
-                var dto = local.ToDto();
-
-                // Se está deletado → usa endpoint DELETE /invoices/{id}
                 if (local.IsDeleted)
                 {
-                    await _apiService.DeleteAsync(local.Id);
+                    await _api.DeleteAsync(local.Id);
                 }
                 else
                 {
-                    await _apiService.UpsertAsync(dto);
+                    var dto = local.ToDto();
+                    await _api.UpsertAsync(dto);
                 }
 
-                // Após envio bem sucedido
                 local.IsDirty = false;
-                local.IsNew = false;
-                await _localRepo.UpdateAsync(local);
+                await _repo.SaveAsync(local);
             }
-        }
-
-        // ---------------------------------------------------------------------
-        // 2) Baixar INVOICES da API
-        // ---------------------------------------------------------------------
-        public async Task PullAsync()
-        {
-            var serverInvoices = await _apiService.GetAllAsync();
-            foreach (var dto in serverInvoices)
+            catch (Exception ex)
             {
-                var local = await _localRepo.GetByIdAsync(dto.Id);
-
-                if (local == null)
-                {
-                    // Novo registro vindo da API
-                    var localNew = dto.ToLocal();
-                    await _localRepo.InsertAsync(localNew);
-                    continue;
-                }
-
-                // Conflito: UpdatedAt define quem vence
-                if (dto.UpdatedAt > local.UpdatedAt)
-                {
-                    // Servidor vence
-                    local.UpdateFromDto(dto);
-                    await _localRepo.UpdateAsync(local);
-                }
-                else
-                {
-                    // Local vence → marca dirty
-                    local.IsDirty = true;
-                    await _localRepo.UpdateAsync(local);
-                }
+                // Log do erro (não interrompe o sync)
+                Console.WriteLine($"Erro sync invoice {local.Id}: {ex.Message}");
             }
         }
+    }
 
-        // ---------------------------------------------------------------------
-        // 3) Sync completo (chamado pelo App)
-        // ---------------------------------------------------------------------
-        public async Task SyncAsync()
+    private async Task PullAsync()
+    {
+        var server = await _api.GetAllAsync();
+        foreach (var dto in server)
         {
-            await PushAsync();  // envia alterações locais primeiro
-            await PullAsync();  // depois baixa alterações do servidor
+            var local = await _repo.GetByIdAsync(dto.Id);
+
+            if (local == null)
+            {
+                var novo = dto.ToLocal();
+                await _repo.SaveAsync(novo);
+                continue;
+            }
+
+            if (dto.UpdatedAt > local.UpdatedAt)
+            {
+                local.UpdateFromDto(dto);
+                local.IsDirty = false;
+                await _repo.SaveAsync(local);
+            }
         }
     }
 }
