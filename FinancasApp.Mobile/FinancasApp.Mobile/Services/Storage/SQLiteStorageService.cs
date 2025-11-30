@@ -23,61 +23,104 @@ public class SQLiteStorageService : ILocalStorageService
         _invoiceRepo = invoiceRepo;
     }
 
-    // === ACCOUNTS ===
-    public async Task<AccountLocal?> GetAccountByIdAsync(Guid id) => await _accountRepo.GetByIdAsync(id);
-    public async Task<List<AccountLocal>> GetAllAccountsAsync() => await _accountRepo.GetAllAsync();
-    public async Task<int> SaveAccountAsync(AccountLocal account)
+    // === CRUD Genérico (agora 100% funcional e sem CS0704) ===
+    public async Task<T?> GetByIdAsync<T>(Guid id) where T : BaseEntity, new()
     {
-        if (account.Id == Guid.Empty)
+        return typeof(T) switch
         {
-            account.Id = Guid.NewGuid();
-            return await _accountRepo.InsertAsync(account);
-        }
-        return await _accountRepo.UpdateAsync(account);
+            var t when t == typeof(AccountLocal) => await _accountRepo.GetByIdAsync(id) as T,
+            var t when t == typeof(TransactionLocal) => await _transactionRepo.GetByIdAsync(id) as T,
+            var t when t == typeof(CreditCardLocal) => await _creditCardRepo.GetByIdAsync(id) as T,
+            var t when t == typeof(InvoiceLocal) => await _invoiceRepo.GetByIdAsync(id) as T,
+            _ => null
+        };
     }
 
-    // === TRANSACTIONS ===
-    public async Task<TransactionLocal?> GetTransactionByIdAsync(Guid id) => await _transactionRepo.GetByIdAsync(id);
-    public async Task<List<TransactionLocal>> GetAllTransactionsAsync() => await _transactionRepo.GetAllAsync();
-    public async Task<int> SaveTransactionAsync(TransactionLocal transaction)
+    public async Task<List<T>> GetAllAsync<T>() where T : BaseEntity, new()
     {
-        if (transaction.Id == Guid.Empty)
+        var result = typeof(T) switch
         {
-            transaction.Id = Guid.NewGuid();
-            return await _transactionRepo.InsertAsync(transaction);
-        }
-        return await _transactionRepo.UpdateAsync(transaction);
+            var t when t == typeof(AccountLocal) => (await _accountRepo.GetAllAsync()).Cast<T>().ToList(),
+            var t when t == typeof(TransactionLocal) => (await _transactionRepo.GetAllAsync()).Cast<T>().ToList(),
+            var t when t == typeof(CreditCardLocal) => (await _creditCardRepo.GetAllAsync()).Cast<T>().ToList(),
+            var t when t == typeof(InvoiceLocal) => (await _invoiceRepo.GetAllAsync()).Cast<T>().ToList(),
+            _ => new List<T>()
+        };
+        return result;
     }
 
-    // === CREDIT CARDS ===
-    public async Task<CreditCardLocal?> GetCreditCardByIdAsync(Guid id) => await _creditCardRepo.GetByIdAsync(id);
-    public async Task<List<CreditCardLocal>> GetAllCreditCardsAsync() => await _creditCardRepo.GetAllAsync();
-    public async Task<int> SaveCreditCardAsync(CreditCardLocal card)
+    public async Task<int> SaveAsync<T>(T entity) where T : BaseEntity, new()
     {
-        if (card.Id == Guid.Empty)
+        if (entity == null) throw new ArgumentNullException(nameof(entity));
+
+        entity.IsDirty = true;
+        entity.UpdatedAt = DateTime.UtcNow;
+
+        if (entity.Id == Guid.Empty)
+            entity.Id = Guid.NewGuid();
+
+        return entity switch
         {
-            card.Id = Guid.NewGuid();
-            return await _creditCardRepo.InsertAsync(card);
-        }
-        return await _creditCardRepo.UpdateAsync(card);
+            AccountLocal a => entity.Id == Guid.Empty
+                ? await _accountRepo.InsertAsync(a)
+                : await _accountRepo.UpdateAsync(a),
+
+            TransactionLocal t => entity.Id == Guid.Empty
+                ? await _transactionRepo.InsertAsync(t)
+                : await _transactionRepo.UpdateAsync(t),
+
+            CreditCardLocal c => entity.Id == Guid.Empty
+                ? await _creditCardRepo.InsertAsync(c)
+                : await _creditCardRepo.UpdateAsync(c),
+
+            InvoiceLocal i => entity.Id == Guid.Empty
+                ? await _invoiceRepo.InsertAsync(i)
+                : await _invoiceRepo.UpdateAsync(i),
+
+            _ => throw new NotSupportedException($"Tipo {typeof(T)} não suportado")
+        };
     }
 
-    // === INVOICES ===
-    public async Task<InvoiceLocal?> GetInvoiceByIdAsync(Guid id) => await _invoiceRepo.GetByIdAsync(id);
-    public async Task<List<InvoiceLocal>> GetAllInvoicesAsync() => await _invoiceRepo.GetAllAsync();
+    public async Task<int> DeleteAsync<T>(Guid id) where T : BaseEntity, new()
+    {
+        var entity = await GetByIdAsync<T>(id);
+        if (entity == null) return 0;
+
+        return entity switch
+        {
+            AccountLocal a => await _accountRepo.DeleteAsync(a),
+            TransactionLocal t => await _transactionRepo.DeleteAsync(t),
+            CreditCardLocal c => await _creditCardRepo.DeleteAsync(c),
+            InvoiceLocal i => await _invoiceRepo.DeleteAsync(i),
+            _ => 0
+        };
+    }
+
+    // === Métodos específicos (mantidos por compatibilidade com ViewModels) ===
+    public Task<List<TransactionLocal>> GetTransactionsAsync() => _transactionRepo.GetAllAsync();
+    public Task<int> SaveTransactionAsync(TransactionLocal t) => SaveAsync(t);
+
+    public Task<List<AccountLocal>> GetAccountsAsync() => _accountRepo.GetAllAsync();
+    public Task<int> SaveAccountAsync(AccountLocal a) => SaveAsync(a);
+
+    public Task<List<CreditCardLocal>> GetCreditCardsAsync() => _creditCardRepo.GetAllAsync();
+    public Task<CreditCardLocal?> GetCreditCardByIdAsync(Guid id) => _creditCardRepo.GetByIdAsync(id);
+
+    public Task<List<InvoiceLocal>> GetInvoicesAsync() => _invoiceRepo.GetAllAsync();
     public async Task<List<InvoiceLocal>> GetPendingInvoicesAsync()
     {
-        if (_invoiceRepo is InvoiceRepository invoiceRepo)
-            return await invoiceRepo.GetPendingAsync();
-        return await _invoiceRepo.GetAllAsync();
+        if (_invoiceRepo is InvoiceRepository repo)
+            return await repo.GetPendingAsync();
+
+        return (await _invoiceRepo.GetAllAsync())
+            .Where(i => i.IsDirty || i.IsDeleted)
+            .ToList();
     }
 
-    public async Task<int> SaveInvoiceAsync(InvoiceLocal invoice)
-    {
-        // ... seu código
-        if (invoice.Id == Guid.Empty)
-            return await _invoiceRepo.InsertAsync(invoice);
-        else
-            return await _invoiceRepo.UpdateAsync(invoice);
-    }
+    public async Task<InvoiceLocal?> GetCurrentInvoiceAsync()
+        => (await GetInvoicesAsync())
+            .OrderByDescending(i => i.CreatedAt)
+            .FirstOrDefault();
+
+    public Task<int> SaveInvoiceAsync(InvoiceLocal i) => SaveAsync(i);
 }

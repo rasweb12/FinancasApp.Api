@@ -1,4 +1,5 @@
-﻿using FinancasApp.Mobile.Mappers;
+﻿// Services/Sync/SyncService.cs
+using FinancasApp.Mobile.Mappers;
 using FinancasApp.Mobile.Models.DTOs;
 using FinancasApp.Mobile.Models.Local;
 using FinancasApp.Mobile.Services.Storage;
@@ -26,340 +27,205 @@ public class SyncService : ISyncService
 
     public async Task SyncAllAsync()
     {
-        _logger.LogInformation("🔄 SyncService: início da sincronização.");
-
+        _logger.LogInformation("Sincronização iniciada — FinancasApp");
         try
         {
-            await UploadPendingItemsAsync();
+            await UploadPendingAsync();
             await DownloadUpdatesAsync();
+            _logger.LogInformation("Sincronização concluída com sucesso!");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Erro durante SyncAllAsync");
+            _logger.LogError(ex, "Erro crítico na sincronização");
+            throw;
         }
     }
 
     // ==============================================================
-    // UPLOAD
+    // UPLOAD: Envia tudo que está IsDirty ou IsDeleted
     // ==============================================================
-
-    private async Task UploadPendingItemsAsync()
+    private async Task UploadPendingAsync()
     {
-        _logger.LogInformation("⬆ UploadPendingItemsAsync: buscando itens pendentes...");
+        // Contas
+        var dirtyAccounts = (await _local.GetAccountsAsync())
+            .Where(a => a.IsDirty || a.IsDeleted)
+            .ToList();
 
-        var pending = await _local.GetPendingSyncItemsAsync();
-
-        if (pending.Count == 0)
+        if (dirtyAccounts.Any())
         {
-            _logger.LogInformation("Nenhum item pendente de upload.");
-            return;
+            await _api.SyncAccountsAsync(dirtyAccounts.Select(AccountMapper.ToDto).ToList());
+            foreach (var a in dirtyAccounts) await MarkAsSyncedAsync(a);
         }
 
-        var accounts = pending.OfType<AccountLocal>().ToList();
-        var tx = pending.OfType<TransactionLocal>().ToList();
-        var cards = pending.OfType<CreditCardLocal>().ToList();
-        var invoices = pending.OfType<InvoiceLocal>().ToList();
+        // Transações
+        var dirtyTransactions = (await _local.GetTransactionsAsync())
+            .Where(t => t.IsDirty || t.IsDeleted)
+            .ToList();
 
-        // ACCOUNTS
-        if (accounts.Any())
+        if (dirtyTransactions.Any())
         {
-            try
-            {
-                await _api.SyncAccountsAsync(accounts.Select(ToDto).ToList());
-                foreach (var a in accounts) await MarkAsSyncedAsync(a);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Falha ao enviar contas.");
-            }
+            await _api.SyncTransactionsAsync(dirtyTransactions.Select(TransactionLocalMapper.ToDto).ToList());
+            foreach (var t in dirtyTransactions) await MarkAsSyncedAsync(t);
         }
 
-        // TRANSACTIONS
-        if (tx.Any())
+        // Cartões de Crédito
+        var dirtyCards = (await _local.GetCreditCardsAsync())
+            .Where(c => c.IsDirty || c.IsDeleted)
+            .ToList();
+
+        if (dirtyCards.Any())
         {
-            try
-            {
-                await _api.SyncTransactionsAsync(tx.Select(TransactionLocalMapper.ToDto).ToList());
-                foreach (var t in tx) await MarkAsSyncedAsync(t);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Falha ao enviar transações.");
-            }
+            await _api.SyncCardsAsync(dirtyCards.Select(CreditCardMapper.ToDto).ToList());
+            foreach (var c in dirtyCards) await MarkAsSyncedAsync(c);
         }
 
-        // CARDS
-        if (cards.Any())
+        // Faturas
+        var dirtyInvoices = await _local.GetPendingInvoicesAsync();
+        if (dirtyInvoices.Any())
         {
-            try
-            {
-                await _api.SyncCardsAsync(cards.Select(ToDto).ToList());
-                foreach (var c in cards) await MarkAsSyncedAsync(c);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Falha ao enviar cartões.");
-            }
-        }
-
-        // INVOICES
-        if (invoices.Any())
-        {
-            try
-            {
-                await _api.SyncInvoicesAsync(invoices.Select(ToDto).ToList());
-                foreach (var i in invoices) await MarkAsSyncedAsync(i);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Falha ao enviar faturas.");
-            }
+            await _api.SyncInvoicesAsync(dirtyInvoices.Select(InvoiceMapper.ToDto).ToList());
+            foreach (var i in dirtyInvoices) await MarkAsSyncedAsync(i);
         }
     }
 
-    private async Task MarkAsSyncedAsync(BaseLocalEntity entity)
+    // ==============================================================
+    // Marca como sincronizado (limpa flag e deleta se necessário)
+    // ==============================================================
+    private async Task MarkAsSyncedAsync(BaseEntity entity)
     {
-        if (entity == null) return;
-
-        entity.IsNew = false;
-        entity.IsDirty = false;
-
         if (entity.IsDeleted)
         {
-            await _local.DeletePermanentAsync(entity);
-            return;
+            // Usamos os métodos específicos porque BaseEntity é abstract
+            switch (entity)
+            {
+                case AccountLocal a: await _local.DeleteAsync<AccountLocal>(a.Id); break;
+                case TransactionLocal t: await _local.DeleteAsync<TransactionLocal>(t.Id); break;
+                case CreditCardLocal c: await _local.DeleteAsync<CreditCardLocal>(c.Id); break;
+                case InvoiceLocal i: await _local.DeleteAsync<InvoiceLocal>(i.Id); break;
+            }
         }
+        else
+        {
+            entity.IsDirty = false;
+            entity.UpdatedAt = DateTime.UtcNow;
 
-        await _local.UpdateAsync(entity);
+            // Usamos os métodos específicos (não SaveAsync<T> genérico)
+            switch (entity)
+            {
+                case AccountLocal a: await _local.SaveAccountAsync(a); break;
+                case TransactionLocal t: await _local.SaveTransactionAsync(t); break;
+                case CreditCardLocal c: await _local.SaveCreditCardAsync(c); break;
+                case InvoiceLocal i: await _local.SaveInvoiceAsync(i); break;
+            }
+        }
     }
 
     // ==============================================================
-    // DOWNLOAD
+    // DOWNLOAD: Atualiza o banco local com dados do servidor
     // ==============================================================
-
     private async Task DownloadUpdatesAsync()
     {
-        _logger.LogInformation("⬇ DownloadUpdatesAsync: buscando atualizações do servidor...");
-
-        await DownloadAccountsAsync();
-        await DownloadTransactionsAsync();
-        await DownloadCardsAsync();
-        await DownloadInvoicesAsync();
+        await Task.WhenAll(
+            SyncAccountsAsync(),
+            SyncTransactionsAsync(),
+            SyncCreditCardsAsync(),
+            SyncInvoicesAsync()
+        );
     }
 
-    // ---------------------- ACCOUNTS ------------------------------
-
-    private async Task DownloadAccountsAsync()
+    private async Task SyncAccountsAsync()
     {
-        try
-        {
-            var server = await _api.GetAccountsForSyncAsync();
-            var local = await _local.GetAccountsAsync();
+        var server = await _api.GetAccountsForSyncAsync();
+        var local = await _local.GetAccountsAsync();
 
-            foreach (var dto in server)
+        foreach (var dto in server)
+        {
+            var existing = local.FirstOrDefault(x => x.Id == dto.Id);
+
+            if (dto.IsDeleted && (existing == null || !existing.IsDirty))
             {
-                var exists = local.FirstOrDefault(x => x.Id == dto.Id);
-
-                if (dto.IsDeleted)
-                {
-                    if (exists != null && !exists.IsDirty)
-                        await _local.DeletePermanentAsync(exists);
-                    continue;
-                }
-
-                if (exists == null)
-                    await _local.SaveAccountAsync(ToLocal(dto));
-                else if (!exists.IsDirty && dto.UpdatedAt > exists.UpdatedAt)
-                    await _local.SaveAccountAsync(ToLocal(dto));
+                if (existing != null) await _local.DeleteAsync<AccountLocal>(dto.Id);
+                continue;
             }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Erro no download de contas.");
+
+            var updated = AccountMapper.ToLocal(dto);
+
+            if (existing == null)
+                await _local.SaveAccountAsync(updated);
+            else if (dto.UpdatedAt > existing.UpdatedAt && !existing.IsDirty)
+                await _local.SaveAccountAsync(updated);
         }
     }
 
-    // ---------------------- TRANSACTIONS --------------------------
-
-    private async Task DownloadTransactionsAsync()
+    private async Task SyncTransactionsAsync()
     {
-        try
-        {
-            var server = await _api.GetTransactionsForSyncAsync();
-            var local = await _local.GetTransactionsAsync();
+        var server = await _api.GetTransactionsForSyncAsync();
+        var local = await _local.GetTransactionsAsync();
 
-            foreach (var dto in server)
+        foreach (var dto in server)
+        {
+            var existing = local.FirstOrDefault(x => x.Id == dto.Id);
+
+            if (dto.IsDeleted && (existing == null || !existing.IsDirty))
             {
-                var exists = local.FirstOrDefault(x => x.Id == dto.Id);
-
-                if (dto.IsDeleted)
-                {
-                    if (exists != null && !exists.IsDirty)
-                        await _local.DeletePermanentAsync(exists);
-                    continue;
-                }
-
-                if (exists == null)
-                    await _local.SaveTransactionAsync(TransactionLocalMapper.ToLocal(dto));
-                else if (!exists.IsDirty && dto.UpdatedAt > exists.UpdatedAt)
-                    await _local.SaveTransactionAsync(TransactionLocalMapper.ToLocal(dto));
+                if (existing != null) await _local.DeleteAsync<TransactionLocal>(dto.Id);
+                continue;
             }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Erro no download de transações.");
+
+            var updated = TransactionLocalMapper.ToLocal(dto);
+
+            if (existing == null)
+                await _local.SaveTransactionAsync(updated);
+            else if (dto.UpdatedAt > existing.UpdatedAt && !existing.IsDirty)
+                await _local.SaveTransactionAsync(updated);
         }
     }
 
-    // ---------------------- CARDS ------------------------------
-
-    private async Task DownloadCardsAsync()
+    private async Task SyncCreditCardsAsync()
     {
-        try
-        {
-            var server = await _api.GetCardsForSyncAsync();
-            var local = await _local.GetCreditCardsAsync();
+        var server = await _api.GetCardsForSyncAsync();
+        var local = await _local.GetCreditCardsAsync();
 
-            foreach (var dto in server)
+        foreach (var dto in server)
+        {
+            var existing = local.FirstOrDefault(x => x.Id == dto.Id);
+
+            if (dto.IsDeleted && (existing == null || !existing.IsDirty))
             {
-                var exists = local.FirstOrDefault(x => x.Id == dto.Id);
-
-                if (dto.IsDeleted)
-                {
-                    if (exists != null && !exists.IsDirty)
-                        await _local.DeletePermanentAsync(exists);
-                    continue;
-                }
-
-                if (exists == null)
-                    await _local.SaveCreditCardAsync(ToLocal(dto));
-                else if (!exists.IsDirty && dto.UpdatedAt > exists.UpdatedAt)
-                    await _local.SaveCreditCardAsync(ToLocal(dto));
+                if (existing != null) await _local.DeleteAsync<CreditCardLocal>(dto.Id);
+                continue;
             }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Erro no download de cartões.");
+
+            var updated = CreditCardMapper.ToLocal(dto);
+
+            if (existing == null)
+                await _local.SaveCreditCardAsync(updated);
+            else if (dto.UpdatedAt > existing.UpdatedAt && !existing.IsDirty)
+                await _local.SaveCreditCardAsync(updated);
         }
     }
 
-    // ---------------------- INVOICES ------------------------------
-
-    private async Task DownloadInvoicesAsync()
+    private async Task SyncInvoicesAsync()
     {
-        try
-        {
-            var server = await _api.GetInvoicesForSyncAsync();
-            var local = await _local.GetInvoicesAsync();
+        var server = await _api.GetInvoicesForSyncAsync();
+        var local = await _local.GetInvoicesAsync();
 
-            foreach (var dto in server)
+        foreach (var dto in server)
+        {
+            var existing = local.FirstOrDefault(x => x.Id == dto.Id);
+
+            if (dto.IsDeleted && (existing == null || !existing.IsDirty))
             {
-                var exists = local.FirstOrDefault(x => x.Id == dto.Id);
-
-                if (dto.IsDeleted)
-                {
-                    if (exists != null && !exists.IsDirty)
-                        await _local.DeletePermanentAsync(exists);
-                    continue;
-                }
-
-                if (exists == null)
-                    await _local.SaveInvoiceAsync(ToLocal(dto));
-                else if (!exists.IsDirty && dto.UpdatedAt > exists.UpdatedAt)
-                    await _local.SaveInvoiceAsync(ToLocal(dto));
+                if (existing != null) await _local.DeleteAsync<InvoiceLocal>(dto.Id);
+                continue;
             }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Erro no download de faturas.");
+
+            var updated = InvoiceMapper.ToLocal(dto);
+
+            if (existing == null)
+                await _local.SaveInvoiceAsync(updated);
+            else if (dto.UpdatedAt > existing.UpdatedAt && !existing.IsDirty)
+                await _local.SaveInvoiceAsync(updated);
         }
     }
-
-    // ==============================================================
-    // MAPPERS
-    // ==============================================================
-
-    private AccountDto ToDto(AccountLocal a) => new()
-    {
-        Id = a.Id,
-        Name = a.Name,
-        AccountType = (int)a.AccountType,
-        Balance = a.Balance,
-        Currency = a.Currency,
-        UpdatedAt = a.UpdatedAt,
-        CreatedAt = a.CreatedAt,
-        IsDeleted = a.IsDeleted
-    };
-
-    private CreditCardDto ToDto(CreditCardLocal c) => new()
-    {
-        Id = c.Id,
-        Name = c.Name,
-        Last4Digits = c.Last4Digits,
-        CreditLimit = c.CreditLimit,
-        CurrentInvoiceId = c.CurrentInvoiceId,
-        DueDay = c.DueDay,
-        ClosingDay = c.ClosingDay,
-        UpdatedAt = c.UpdatedAt,
-        CreatedAt = c.CreatedAt,
-        IsDeleted = c.IsDeleted
-    };
-
-    private InvoiceDto ToDto(InvoiceLocal i) => new()
-    {
-        Id = i.Id,
-        CreditCardId = i.CreditCardId,
-        Month = i.Month,
-        Year = i.Year,
-        Total = i.Total,
-        PaidAmount = i.PaidAmount,
-        ClosingDate = i.ClosingDate,
-        DueDate = i.DueDate,
-        IsPaid = i.IsPaid,
-        UpdatedAt = i.UpdatedAt,
-        CreatedAt = i.CreatedAt,
-        IsDeleted = i.IsDeleted
-    };
-
-    private AccountLocal ToLocal(AccountDto d) => new()
-    {
-        Id = d.Id,
-        Name = d.Name,
-        Balance = d.Balance,
-        Currency = d.Currency,
-        AccountType = (AccountType)d.AccountType,
-        CreatedAt = d.CreatedAt,
-        UpdatedAt = d.UpdatedAt,
-        IsDeleted = d.IsDeleted
-    };
-
-    private CreditCardLocal ToLocal(CreditCardDto d) => new()
-    {
-        Id = d.Id,
-        Name = d.Name,
-        Last4Digits = d.Last4Digits,
-        CreditLimit = d.CreditLimit,
-        CurrentInvoiceId = d.CurrentInvoiceId ?? Guid.Empty,
-        ClosingDay = d.ClosingDay,
-        DueDay = d.DueDay,
-        IsDeleted = d.IsDeleted,
-        CreatedAt = d.CreatedAt,
-        UpdatedAt = d.UpdatedAt
-    };
-
-    private InvoiceLocal ToLocal(InvoiceDto d) => new()
-    {
-        Id = d.Id,
-        CreditCardId = d.CreditCardId,
-        Month = d.Month,
-        Year = d.Year,
-        Total = d.Total,
-        PaidAmount = d.PaidAmount,
-        ClosingDate = d.ClosingDate,
-        DueDate = d.DueDate,
-        IsPaid = d.IsPaid,
-        IsDeleted = d.IsDeleted,
-        CreatedAt = d.CreatedAt,
-        UpdatedAt = d.UpdatedAt
-    };
 }

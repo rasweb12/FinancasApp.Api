@@ -17,19 +17,25 @@ public partial class NewTransactionViewModel : ObservableObject
 
     [ObservableProperty] private string[] transactionTypes = ["Despesa", "Receita"];
     [ObservableProperty] private string selectedType = "Despesa";
+
     [ObservableProperty] private decimal amount;
     [ObservableProperty] private DateTime date = DateTime.Today;
     [ObservableProperty] private string description = "";
+
     [ObservableProperty] private string[] categories = ["Alimentação", "Transporte", "Lazer", "Saúde", "Outros"];
     [ObservableProperty] private string selectedCategory = "Alimentação";
-    [ObservableProperty] private ObservableCollection<TagItem> tags;
+
+    [ObservableProperty] private ObservableCollection<TagItem> tags = new();
     [ObservableProperty] private bool isInstallment;
     [ObservableProperty] private int installments = 1;
     [ObservableProperty] private bool isBusy;
 
     public bool IsValid => Amount > 0 && !string.IsNullOrWhiteSpace(Description);
 
-    public NewTransactionViewModel(ILocalStorageService local, SyncService sync, ILogger<NewTransactionViewModel> logger)
+    public NewTransactionViewModel(
+        ILocalStorageService local,
+        SyncService sync,
+        ILogger<NewTransactionViewModel> logger)
     {
         _local = local;
         _sync = sync;
@@ -39,12 +45,10 @@ public partial class NewTransactionViewModel : ObservableObject
 
     private void LoadTags()
     {
-        Tags = new()
-        {
-            new TagItem { Name = "Urgente", IsSelected = false },
-            new TagItem { Name = "Recorrente", IsSelected = false },
-            new TagItem { Name = "Cartão", IsSelected = false }
-        };
+        Tags.Clear();
+        Tags.Add(new TagItem { Name = "Urgente" });
+        Tags.Add(new TagItem { Name = "Recorrente" });
+        Tags.Add(new TagItem { Name = "Cartão" });
     }
 
     [RelayCommand]
@@ -63,50 +67,52 @@ public partial class NewTransactionViewModel : ObservableObject
         });
 
         if (result != null)
-            await Application.Current!.MainPage!.DisplayAlert("Anexo", $"Comprovante: {result.FileName}", "OK");
+            await Shell.Current.DisplayAlert("Anexo", $"Comprovante: {result.FileName}", "OK");
     }
 
     [RelayCommand]
     private async Task SaveAsync()
     {
+        if (!IsValid)
+            return;
+
         IsBusy = true;
+
         try
         {
-            // Mapeamento manual de categorias para IDs (ajuste conforme seu back-end)
+            // Mapeamento simples de categoria → ID (ajuste conforme seu back-end)
             var categoryMap = new Dictionary<string, int?>
-        {
-            { "Alimentação", 1 },
-            { "Transporte", 2 },
-            { "Lazer", 3 },
-            { "Saúde", 4 },
-            { "Outros", 5 }
-        };
+            {
+                { "Alimentação", 1 },
+                { "Transporte", 2 },
+                { "Lazer", 3 },
+                { "Saúde", 4 },
+                { "Outros", 5 }
+            };
 
             var transaction = new TransactionLocal
             {
                 Id = Guid.NewGuid(),
-                AccountId = Guid.Empty, // TODO: preencher conta selecionada
-                Description = Description,
-                Amount = Amount * (SelectedType == "Despesa" ? -1 : 1),
+                AccountId = Guid.Empty, // TODO: permitir seleção de conta no futuro
+                Description = Description.Trim(),
+                Amount = SelectedType == "Despesa" ? -Amount : Amount,
                 Date = Date,
-                CategoryId = categoryMap.ContainsKey(SelectedCategory) ? categoryMap[SelectedCategory] : null,
+                CategoryId = categoryMap.GetValueOrDefault(SelectedCategory),
+                Category = SelectedCategory,
 
-                // Tipo
-                Type = SelectedType == "Despesa" ?
-                    ((int)TransactionType.Expense).ToString() :
-                    ((int)TransactionType.Income).ToString(),
+                // Type agora é string direta — sem enum!
+                Type = SelectedType == "Despesa" ? "Expense" : "Income",
 
-                // Parcelamento
                 InstallmentTotal = IsInstallment ? Installments : 1,
                 InstallmentNumber = 1,
                 TransactionGroupId = IsInstallment ? Guid.NewGuid() : null,
 
-                // Tags CSV
+                // Tags como CSV
                 Tags = string.Join(",", Tags.Where(t => t.IsSelected).Select(t => t.Name)),
 
-                // Defaults importantes
-                IsNew = true,
+                // Sync flags
                 IsDirty = true,
+                IsDeleted = false,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
@@ -119,20 +125,20 @@ public partial class NewTransactionViewModel : ObservableObject
         catch (Exception ex)
         {
             _logger.LogError(ex, "Erro ao salvar transação");
-            await Application.Current!.MainPage!.DisplayAlert("Erro", "Falha ao salvar", "OK");
+            await Shell.Current.DisplayAlert("Erro", "Não foi possível salvar a transação.", "OK");
         }
         finally
         {
             IsBusy = false;
         }
     }
-
 }
 
-// CORRIGIDO: Remover herança duplicada
-[ObservableObject]
-public partial class TagItem
+// Classe auxiliar para tags
+public partial class TagItem : ObservableObject
 {
     public string Name { get; set; } = "";
-    [ObservableProperty] private bool isSelected;
+
+    [ObservableProperty]
+    private bool _isSelected;
 }

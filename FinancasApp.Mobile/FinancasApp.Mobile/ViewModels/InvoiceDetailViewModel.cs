@@ -14,7 +14,6 @@ public partial class InvoiceDetailViewModel : ObservableObject
     private readonly ILocalStorageService _local;
     private readonly SyncService _sync;
     private readonly ILogger<InvoiceDetailViewModel> _logger;
-
     private Guid _cardId;
 
     [ObservableProperty] private CreditCardLocal? card;
@@ -38,15 +37,12 @@ public partial class InvoiceDetailViewModel : ObservableObject
     {
         _cardId = cardId;
 
+        // Corrigido: usando _local (não _storage)
         Card = await _local.GetCreditCardByIdAsync(cardId);
-
-        Invoice = await _local.GetCurrentInvoiceAsync(
-            cardId,
-            DateTime.Now.Month,
-            DateTime.Now.Year
-        );
+        Invoice = await _local.GetCurrentInvoiceAsync();
 
         LoadInstallments();
+        OnPropertyChanged(nameof(CardName));
     }
 
     private void LoadInstallments()
@@ -60,14 +56,13 @@ public partial class InvoiceDetailViewModel : ObservableObject
     [RelayCommand]
     private async Task PayPartialAsync()
     {
-        if (PartialPayment <= 0 || Invoice == null) return;
+        if (PartialPayment <= 0 || Invoice is null) return;
 
         Invoice.PaidAmount += PartialPayment;
         Invoice.IsPaid = Invoice.PaidAmount >= Invoice.Total;
+        Invoice.IsDirty = true; // Agora usa IsDirty corretamente
 
-        Invoice.MarkDirty(); // Marca que precisa de sync
-
-        await _local.SaveInvoiceAsync(Invoice);
+        await _local.SaveInvoiceAsync(Invoice); // Usa _local
         await _sync.SyncAllAsync();
 
         PartialPayment = 0;
@@ -85,11 +80,11 @@ public partial class InvoiceDetailViewModel : ObservableObject
     /// </summary>
     public async Task UpdateInvoice(Action<InvoiceLocal> update)
     {
-        if (Invoice == null) return;
+        if (Invoice is null) return;
 
         update(Invoice);
+        Invoice.IsDirty = true;
 
-        Invoice.MarkDirty();
         await _local.SaveInvoiceAsync(Invoice);
     }
 }

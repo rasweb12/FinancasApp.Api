@@ -1,6 +1,7 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
+﻿// ViewModels/HomeViewModel.cs
+using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using FinancasApp.Mobile.Models.DTOs;
+using FinancasApp.Mobile.Models.Local;
 using FinancasApp.Mobile.Services.Storage;
 using FinancasApp.Mobile.Services.Sync;
 using LiveChartsCore;
@@ -12,118 +13,97 @@ using System.Collections.ObjectModel;
 
 namespace FinancasApp.Mobile.ViewModels;
 
-public partial class HomeViewModel : BaseViewModel
+public partial class HomeViewModel : ObservableObject
 {
-    private readonly IApiService _api;
     private readonly ILocalStorageService _local;
     private readonly SyncService _sync;
     private readonly ILogger<HomeViewModel> _logger;
 
-    // Bindable properties
     [ObservableProperty] private decimal totalBalance;
-    [ObservableProperty] private ObservableCollection<TransactionDto> recentTransactions = new();
+    [ObservableProperty] private ObservableCollection<TransactionLocal> recentTransactions = new();
     [ObservableProperty] private ISeries[] balanceSeries = Array.Empty<ISeries>();
     [ObservableProperty] private Axis[] xAxes = Array.Empty<Axis>();
     [ObservableProperty] private Axis[] yAxes = Array.Empty<Axis>();
+    [ObservableProperty] private string statusMessage = "Carregando...";
+    [ObservableProperty] private bool isBusy;
 
     public IAsyncRelayCommand RefreshCommand { get; }
 
     public HomeViewModel(
-        IApiService api,
         ILocalStorageService local,
         SyncService sync,
         ILogger<HomeViewModel> logger)
     {
-        _api = api;
         _local = local;
         _sync = sync;
         _logger = logger;
-
-        Title = "Dashboard";
 
         RefreshCommand = new AsyncRelayCommand(RefreshAsync);
     }
 
     public async Task InitializeAsync()
     {
-        try
-        {
-            LoadChart();
-            await LoadFromCacheAsync();
-
-            await RefreshCommand.ExecuteAsync(null);
-            await LoadChartAsync();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Erro ao inicializar HomeViewModel");
-            StatusMessage = "Erro ao carregar dados";
-        }
+        LoadChartPlaceholder();
+        await LoadFromCacheAsync();
+        await RefreshCommand.ExecuteAsync(null);
     }
 
     private async Task LoadFromCacheAsync()
     {
         try
         {
-            // ⬇️ Ajustado
-            var accounts = await _local.GetAllAccountsAsync();
-
+            var accounts = await _local.GetAccountsAsync();
             TotalBalance = accounts.Sum(a => a.Balance);
 
+            var transactions = await _local.GetTransactionsAsync();
+            RecentTransactions.Clear();
+            foreach (var t in transactions.OrderByDescending(t => t.Date).Take(5))
+                RecentTransactions.Add(t);
+
             StatusMessage = accounts.Any()
-                ? $"Atualizado localmente ({accounts.Count()} contas)"
-                : "Nenhuma conta encontrada";
+                ? $"Cache • {accounts.Count} conta(s)"
+                : "Nenhuma conta cadastrada";
         }
         catch (Exception ex)
         {
-            StatusMessage = "Erro ao carregar cache";
-            _logger.LogError(ex, "Falha ao carregar dados locais");
+            StatusMessage = "Erro ao carregar dados locais";
+            _logger.LogError(ex, "Falha ao carregar cache");
         }
     }
 
-    private void LoadChart()
+    private void LoadChartPlaceholder()
     {
         BalanceSeries = new ISeries[]
         {
             new LineSeries<decimal>
             {
-                Values = new decimal[] { 2500, 3200, 2800, 3500, 4000, 4500 },
+                Values = [0, 0, 0, 0, 0, 0],
                 Fill = null,
-                Stroke = new SolidColorPaint(SKColors.DeepSkyBlue, 4),
-                GeometryFill = null,
-                GeometryStroke = null
+                Stroke = new SolidColorPaint(SKColors.LightGray.WithAlpha(80), 2),
+                GeometrySize = 0
             }
         };
-
-        XAxes = new Axis[] { new() { Labels = new[] { "Jan", "Fev", "Mar", "Abr", "Mai", "Jun" } } };
-        YAxes = new Axis[] { new() { MinLimit = 0 } };
+        XAxes = [new Axis { Labels = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun"] }];
+        YAxes = [new Axis { MinLimit = 0 }];
     }
 
     private async Task RefreshAsync()
     {
         if (IsBusy) return;
-
         IsBusy = true;
-        StatusMessage = "Sincronizando dados...";
+        StatusMessage = "Sincronizando...";
 
         try
         {
             await _sync.SyncAllAsync();
             await LoadFromCacheAsync();
-
-            var transactions = await _api.GetTransactionsAsync();
-            RecentTransactions.Clear();
-            foreach (var t in transactions.Take(5))
-                RecentTransactions.Add(t);
-
-            StatusMessage = $"Atualizado às {DateTime.Now:HH:mm}";
-
             await LoadChartAsync();
+            StatusMessage = $"Atualizado • {DateTime.Now:HH:mm}";
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Falha ao sincronizar");
-            StatusMessage = "Modo offline (cache)";
+            _logger.LogWarning(ex, "Sincronização falhou");
+            StatusMessage = "Offline • dados locais";
         }
         finally
         {
@@ -135,27 +115,25 @@ public partial class HomeViewModel : BaseViewModel
     {
         try
         {
-            // ⬇️ Ajustado
-            var transactions = await _local.GetAllTransactionsAsync();
+            var transactions = await _local.GetTransactionsAsync();
+            var valid = transactions.Where(t => t.Date != default).OrderBy(t => t.Date).ToList();
 
-            var valid = transactions.Where(t => t.Date != default).ToList();
+            if (!valid.Any())
+            {
+                LoadChartPlaceholder();
+                return;
+            }
 
             var grouped = valid
                 .GroupBy(t => new { t.Date.Year, t.Date.Month })
                 .OrderBy(g => g.Key.Year).ThenBy(g => g.Key.Month)
                 .Select(g => new
                 {
-                    Month = $"{g.Key.Month:D2}/{g.Key.Year}",
+                    Month = new DateTime(g.Key.Year, g.Key.Month, 1).ToString("MMM/yy"),
                     Balance = g.Sum(t => t.Amount)
                 })
+                .TakeLast(6)
                 .ToList();
-
-            if (!grouped.Any())
-            {
-                grouped = Enumerable.Range(1, 6)
-                    .Select(i => new { Month = $"M{i}", Balance = 0m })
-                    .ToList();
-            }
 
             decimal acumulado = 0;
             var values = grouped.Select(g => acumulado += g.Balance).ToArray();
@@ -165,20 +143,21 @@ public partial class HomeViewModel : BaseViewModel
                 new LineSeries<decimal>
                 {
                     Values = values,
-                    Fill = null,
+                    Fill = new SolidColorPaint(SKColors.DeepSkyBlue.WithAlpha(40)),
                     Stroke = new SolidColorPaint(SKColors.DeepSkyBlue, 4),
-                    GeometryStroke = null,
-                    GeometryFill = null
+                    GeometrySize = 12,
+                    GeometryStroke = new SolidColorPaint(SKColors.White, 3),
+                    GeometryFill = new SolidColorPaint(SKColors.DeepSkyBlue)
                 }
             };
 
-            XAxes = new Axis[] { new() { Labels = grouped.Select(x => x.Month).ToArray() } };
-            YAxes = new Axis[] { new() { MinLimit = 0 } };
+            XAxes = [new Axis { Labels = grouped.Select(x => x.Month).ToArray() }];
+            YAxes = [new Axis { Labeler = value => $"R$ {value:N0}", MinLimit = 0 }];
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Erro ao montar gráfico");
-            StatusMessage = "Falha ao gerar gráfico";
+            _logger.LogError(ex, "Erro no gráfico");
+            StatusMessage = "Gráfico indisponível";
         }
     }
 }

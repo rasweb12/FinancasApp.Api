@@ -1,4 +1,5 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
+﻿// ViewModels/AccountsViewModel.cs
+using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using FinancasApp.Mobile.Models.Local;
 using FinancasApp.Mobile.Services.Storage;
@@ -35,10 +36,10 @@ public partial class AccountsViewModel : ObservableObject
     private async Task LoadAccountsAsync()
     {
         IsBusy = true;
-
         try
         {
-            var list = await _local.GetAllAccountsAsync();
+            // CORRIGIDO: Agora usa o método correto da interface
+            var list = await _local.GetAccountsAsync();
 
             Accounts.Clear();
             foreach (var a in list)
@@ -49,10 +50,7 @@ public partial class AccountsViewModel : ObservableObject
         catch (Exception ex)
         {
             _logger.LogError(ex, "Erro ao carregar contas");
-            await Application.Current!.MainPage!.DisplayAlert(
-                "Erro",
-                "Falha ao carregar contas",
-                "OK");
+            await Shell.Current.DisplayAlert("Erro", "Falha ao carregar contas", "OK");
         }
         finally
         {
@@ -68,8 +66,8 @@ public partial class AccountsViewModel : ObservableObject
     {
         try
         {
-            var name = await Application.Current!.MainPage!.DisplayPromptAsync(
-                "Nova Conta", "Nome da conta:");
+            var name = await Shell.Current.DisplayPromptAsync(
+                "Nova Conta", "Nome da conta:", placeholder: "Ex: Nubank, Caixa...");
 
             if (string.IsNullOrWhiteSpace(name)) return;
 
@@ -77,7 +75,7 @@ public partial class AccountsViewModel : ObservableObject
                 "Tipo de conta", "Cancelar", null,
                 "Corrente", "Poupança", "Carteira", "Investimento", "Crédito");
 
-            if (typeString == "Cancelar") return;
+            if (typeString == "Cancelar" || typeString is null) return;
 
             var accountType = typeString switch
             {
@@ -96,8 +94,10 @@ public partial class AccountsViewModel : ObservableObject
                 Balance = 0,
                 InitialBalance = 0,
                 LastBalanceUpdate = DateTime.UtcNow,
-                //IsNew = true,
-                IsDirty = true
+                IsDirty = true,
+                IsDeleted = false,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
             };
 
             await _local.SaveAccountAsync(account);
@@ -107,19 +107,22 @@ public partial class AccountsViewModel : ObservableObject
         catch (Exception ex)
         {
             _logger.LogError(ex, "Erro ao adicionar conta");
+            await Shell.Current.DisplayAlert("Erro", "Não foi possível criar a conta", "OK");
         }
     }
 
     // -----------------------------------------------------
-    // DELETE ACCOUNT (marcando como IsDeleted)
+    // DELETE ACCOUNT (soft delete)
     // -----------------------------------------------------
     [RelayCommand]
     private async Task DeleteAccountAsync(AccountLocal account)
     {
-        var confirm = await Application.Current!.MainPage!.DisplayAlert(
-            "Excluir",
-            $"Remover {account.Name}?",
-            "Sim", "Não");
+        if (account is null) return;
+
+        var confirm = await Shell.Current.DisplayAlert(
+            "Excluir conta",
+            $"Tem certeza que deseja remover \"{account.Name}\"?",
+            "Sim, remover", "Não");
 
         if (!confirm) return;
 
@@ -127,6 +130,7 @@ public partial class AccountsViewModel : ObservableObject
         {
             account.IsDeleted = true;
             account.IsDirty = true;
+            account.UpdatedAt = DateTime.UtcNow;
 
             await _local.SaveAccountAsync(account);
             await LoadAccountsAsync();
@@ -135,6 +139,7 @@ public partial class AccountsViewModel : ObservableObject
         catch (Exception ex)
         {
             _logger.LogError(ex, "Erro ao excluir conta");
+            await Shell.Current.DisplayAlert("Erro", "Falha ao excluir a conta", "OK");
         }
     }
 }
