@@ -5,7 +5,6 @@ namespace FinancasApp.Mobile.Models.Local
     public class TransactionLocal : BaseEntity
     {
         public Guid AccountId { get; set; }
-
         public string Description { get; set; } = string.Empty;
         public decimal Amount { get; set; }
         public DateTime Date { get; set; }
@@ -22,9 +21,7 @@ namespace FinancasApp.Mobile.Models.Local
         public int? InstallmentTotal { get; set; }
 
         public Guid? TransactionGroupId { get; set; }
-
-        public bool IsRecurring { get; set; } = false;
+        public bool IsRecurring { get; set; }
     }
 
-    public enum TransactionType { Income = 1, Expense = 2, Transfer = 3 }
 }
