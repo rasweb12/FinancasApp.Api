@@ -45,7 +45,7 @@ namespace FinancasApp.Mobile.Mappers
                 IsRecurring = false,
 
                 // FLAGS DE SINCRONIZAÇÃO
-                IsNew = false,
+                //IsNew = false,
                 IsDirty = false,
                 IsDeleted = d.IsDeleted,
 

@@ -1,28 +1,18 @@
-﻿// Services/Storage/ILocalStorageService.cs
-using FinancasApp.Mobile.Models.Local;
+﻿using FinancasApp.Mobile.Models.Local;
 
-namespace FinancasApp.Mobile.Services.Storage;
-
-public interface ILocalStorageService
+namespace FinancasApp.Mobile.Services.Storage
 {
-    // Accounts
-    Task<AccountLocal?> GetAccountByIdAsync(Guid id);
-    Task<List<AccountLocal>> GetAllAccountsAsync();
-    Task<int> SaveAccountAsync(AccountLocal account);
+    public interface ILocalStorageService
+    {
+        // GENERIC CRUD — válidos para QUALQUER entidade
+        Task<T?> GetByIdAsync<T>(Guid id) where T : BaseEntity, new();
+        Task<List<T>> GetAllAsync<T>() where T : BaseEntity, new();
+        Task<int> SaveAsync<T>(T entity) where T : BaseEntity, new();
+        Task<int> DeleteAsync<T>(Guid id) where T : BaseEntity, new();
 
-    // Transactions
-    Task<TransactionLocal?> GetTransactionByIdAsync(Guid id);
-    Task<List<TransactionLocal>> GetAllTransactionsAsync();
-    Task<int> SaveTransactionAsync(TransactionLocal transaction);
+        // ESPECÍFICOS APENAS ONDE NECESSÁRIO
 
-    // Credit Cards
-    Task<CreditCardLocal?> GetCreditCardByIdAsync(Guid id);
-    Task<List<CreditCardLocal>> GetAllCreditCardsAsync();
-    Task<int> SaveCreditCardAsync(CreditCardLocal card);
-
-    // Invoices
-    Task<InvoiceLocal?> GetInvoiceByIdAsync(Guid id);
-    Task<List<InvoiceLocal>> GetAllInvoicesAsync();
-    Task<List<InvoiceLocal>> GetPendingInvoicesAsync();
-    Task<int> SaveInvoiceAsync(InvoiceLocal invoice);
+        // Invoices — precisam listagem especial
+        Task<List<InvoiceLocal>> GetPendingInvoicesAsync();
+    }
 }

@@ -39,25 +39,26 @@ public class SyncService : ISyncService
         }
     }
 
-    // ===================================================================
+    // ==============================================================
     // UPLOAD
-    // ===================================================================
+    // ==============================================================
+
     private async Task UploadPendingItemsAsync()
     {
         _logger.LogInformation("⬆ UploadPendingItemsAsync: buscando itens pendentes...");
 
-        var pendingItems = await _local.GetPendingSyncItemsAsync();
+        var pending = await _local.GetPendingSyncItemsAsync();
 
-        if (pendingItems == null || pendingItems.Count == 0)
+        if (pending.Count == 0)
         {
             _logger.LogInformation("Nenhum item pendente de upload.");
             return;
         }
 
-        var accounts = pendingItems.OfType<AccountLocal>().ToList();
-        var tx = pendingItems.OfType<TransactionLocal>().ToList();
-        var cards = pendingItems.OfType<CreditCardLocal>().ToList();
-        var invoices = pendingItems.OfType<InvoiceLocal>().ToList();
+        var accounts = pending.OfType<AccountLocal>().ToList();
+        var tx = pending.OfType<TransactionLocal>().ToList();
+        var cards = pending.OfType<CreditCardLocal>().ToList();
+        var invoices = pending.OfType<InvoiceLocal>().ToList();
 
         // ACCOUNTS
         if (accounts.Any())
@@ -65,8 +66,7 @@ public class SyncService : ISyncService
             try
             {
                 await _api.SyncAccountsAsync(accounts.Select(ToDto).ToList());
-                foreach (var a in accounts)
-                    await MarkAsSyncedAsync(a);
+                foreach (var a in accounts) await MarkAsSyncedAsync(a);
             }
             catch (Exception ex)
             {
@@ -80,8 +80,7 @@ public class SyncService : ISyncService
             try
             {
                 await _api.SyncTransactionsAsync(tx.Select(TransactionLocalMapper.ToDto).ToList());
-                foreach (var t in tx)
-                    await MarkAsSyncedAsync(t);
+                foreach (var t in tx) await MarkAsSyncedAsync(t);
             }
             catch (Exception ex)
             {
@@ -95,8 +94,7 @@ public class SyncService : ISyncService
             try
             {
                 await _api.SyncCardsAsync(cards.Select(ToDto).ToList());
-                foreach (var c in cards)
-                    await MarkAsSyncedAsync(c);
+                foreach (var c in cards) await MarkAsSyncedAsync(c);
             }
             catch (Exception ex)
             {
@@ -110,8 +108,7 @@ public class SyncService : ISyncService
             try
             {
                 await _api.SyncInvoicesAsync(invoices.Select(ToDto).ToList());
-                foreach (var i in invoices)
-                    await MarkAsSyncedAsync(i);
+                foreach (var i in invoices) await MarkAsSyncedAsync(i);
             }
             catch (Exception ex)
             {
@@ -120,10 +117,7 @@ public class SyncService : ISyncService
         }
     }
 
-    // -------------------------------------------------------------------
-    // Nota: agora recebe BaseLocalEntity diretamente (não genérico)
-    // -------------------------------------------------------------------
-    private async Task MarkAsSyncedAsync<T>(T entity) where T : BaseLocalEntity, new()
+    private async Task MarkAsSyncedAsync(BaseLocalEntity entity)
     {
         if (entity == null) return;
 
@@ -132,16 +126,17 @@ public class SyncService : ISyncService
 
         if (entity.IsDeleted)
         {
-            await _local.DeletePermanentAsync(entity); // agora T é concreto (ex: TransactionLocal)
+            await _local.DeletePermanentAsync(entity);
             return;
         }
 
-        await _local.UpdateAsync(entity); // idem
+        await _local.UpdateAsync(entity);
     }
 
-    // ===================================================================
+    // ==============================================================
     // DOWNLOAD
-    // ===================================================================
+    // ==============================================================
+
     private async Task DownloadUpdatesAsync()
     {
         _logger.LogInformation("⬇ DownloadUpdatesAsync: buscando atualizações do servidor...");
@@ -152,7 +147,8 @@ public class SyncService : ISyncService
         await DownloadInvoicesAsync();
     }
 
-    // ACCOUNTS
+    // ---------------------- ACCOUNTS ------------------------------
+
     private async Task DownloadAccountsAsync()
     {
         try
@@ -172,13 +168,9 @@ public class SyncService : ISyncService
                 }
 
                 if (exists == null)
-                {
                     await _local.SaveAccountAsync(ToLocal(dto));
-                }
                 else if (!exists.IsDirty && dto.UpdatedAt > exists.UpdatedAt)
-                {
                     await _local.SaveAccountAsync(ToLocal(dto));
-                }
             }
         }
         catch (Exception ex)
@@ -187,7 +179,8 @@ public class SyncService : ISyncService
         }
     }
 
-    // TRANSACTIONS
+    // ---------------------- TRANSACTIONS --------------------------
+
     private async Task DownloadTransactionsAsync()
     {
         try
@@ -207,13 +200,9 @@ public class SyncService : ISyncService
                 }
 
                 if (exists == null)
-                {
                     await _local.SaveTransactionAsync(TransactionLocalMapper.ToLocal(dto));
-                }
                 else if (!exists.IsDirty && dto.UpdatedAt > exists.UpdatedAt)
-                {
                     await _local.SaveTransactionAsync(TransactionLocalMapper.ToLocal(dto));
-                }
             }
         }
         catch (Exception ex)
@@ -222,7 +211,8 @@ public class SyncService : ISyncService
         }
     }
 
-    // CARDS
+    // ---------------------- CARDS ------------------------------
+
     private async Task DownloadCardsAsync()
     {
         try
@@ -242,13 +232,9 @@ public class SyncService : ISyncService
                 }
 
                 if (exists == null)
-                {
                     await _local.SaveCreditCardAsync(ToLocal(dto));
-                }
                 else if (!exists.IsDirty && dto.UpdatedAt > exists.UpdatedAt)
-                {
                     await _local.SaveCreditCardAsync(ToLocal(dto));
-                }
             }
         }
         catch (Exception ex)
@@ -257,7 +243,8 @@ public class SyncService : ISyncService
         }
     }
 
-    // INVOICES
+    // ---------------------- INVOICES ------------------------------
+
     private async Task DownloadInvoicesAsync()
     {
         try
@@ -277,13 +264,9 @@ public class SyncService : ISyncService
                 }
 
                 if (exists == null)
-                {
                     await _local.SaveInvoiceAsync(ToLocal(dto));
-                }
                 else if (!exists.IsDirty && dto.UpdatedAt > exists.UpdatedAt)
-                {
                     await _local.SaveInvoiceAsync(ToLocal(dto));
-                }
             }
         }
         catch (Exception ex)
@@ -292,136 +275,91 @@ public class SyncService : ISyncService
         }
     }
 
-    // ===================================================================
-    // MAPPERS (LOCAL <-> DTO)
-    // ===================================================================
-    private AccountDto ToDto(AccountLocal a) =>
-        new()
-        {
-            Id = a.Id,
-            Name = a.Name,
-            AccountType = (int)a.AccountType,
-            Balance = a.Balance,
-            Currency = a.Currency,
-            UpdatedAt = a.UpdatedAt,
-            CreatedAt = a.CreatedAt,
-            IsDeleted = a.IsDeleted
-        };
+    // ==============================================================
+    // MAPPERS
+    // ==============================================================
 
-    private TransactionDto ToDto(TransactionLocal t) =>
-        new()
-        {
-            Id = t.Id,
-            Amount = t.Amount,
-            Description = t.Description,
-            Date = t.Date,
-            CategoryId = t.CategoryId,
-            Tags = t.Tags,
-            IsDeleted = t.IsDeleted,
-            UpdatedAt = t.UpdatedAt,
-            CreatedAt = t.CreatedAt
-        };
+    private AccountDto ToDto(AccountLocal a) => new()
+    {
+        Id = a.Id,
+        Name = a.Name,
+        AccountType = (int)a.AccountType,
+        Balance = a.Balance,
+        Currency = a.Currency,
+        UpdatedAt = a.UpdatedAt,
+        CreatedAt = a.CreatedAt,
+        IsDeleted = a.IsDeleted
+    };
 
-    private CreditCardDto ToDto(CreditCardLocal c) =>
-        new()
-        {
-            Id = c.Id,
-            Name = c.Name,
-            Last4Digits = c.Last4Digits,
-            CreditLimit = c.CreditLimit,
-            CurrentInvoiceId = c.CurrentInvoiceId,
-            DueDay = c.DueDay,
-            ClosingDay = c.ClosingDay,
-            UpdatedAt = c.UpdatedAt,
-            CreatedAt = c.CreatedAt,
-            IsDeleted = c.IsDeleted
-        };
+    private CreditCardDto ToDto(CreditCardLocal c) => new()
+    {
+        Id = c.Id,
+        Name = c.Name,
+        Last4Digits = c.Last4Digits,
+        CreditLimit = c.CreditLimit,
+        CurrentInvoiceId = c.CurrentInvoiceId,
+        DueDay = c.DueDay,
+        ClosingDay = c.ClosingDay,
+        UpdatedAt = c.UpdatedAt,
+        CreatedAt = c.CreatedAt,
+        IsDeleted = c.IsDeleted
+    };
 
-    private InvoiceDto ToDto(InvoiceLocal i) =>
-        new()
-        {
-            Id = i.Id,
-            CreditCardId = i.CreditCardId,
-            Month = i.Month,
-            Year = i.Year,
-            Total = i.Total,
-            PaidAmount = i.PaidAmount,
-            ClosingDate = i.ClosingDate,
-            DueDate = i.DueDate,
-            IsPaid = i.IsPaid,
-            UpdatedAt = i.UpdatedAt,
-            CreatedAt = i.CreatedAt,
-            IsDeleted = i.IsDeleted
-        };
+    private InvoiceDto ToDto(InvoiceLocal i) => new()
+    {
+        Id = i.Id,
+        CreditCardId = i.CreditCardId,
+        Month = i.Month,
+        Year = i.Year,
+        Total = i.Total,
+        PaidAmount = i.PaidAmount,
+        ClosingDate = i.ClosingDate,
+        DueDate = i.DueDate,
+        IsPaid = i.IsPaid,
+        UpdatedAt = i.UpdatedAt,
+        CreatedAt = i.CreatedAt,
+        IsDeleted = i.IsDeleted
+    };
 
-    private AccountLocal ToLocal(AccountDto d) =>
-        new()
-        {
-            Id = d.Id,
-            Name = d.Name,
-            Balance = d.Balance,
-            Currency = d.Currency,
-            AccountType = (AccountType)d.AccountType,
-            CreatedAt = d.CreatedAt,
-            UpdatedAt = d.UpdatedAt,
-            IsDeleted = d.IsDeleted
-        };
+    private AccountLocal ToLocal(AccountDto d) => new()
+    {
+        Id = d.Id,
+        Name = d.Name,
+        Balance = d.Balance,
+        Currency = d.Currency,
+        AccountType = (AccountType)d.AccountType,
+        CreatedAt = d.CreatedAt,
+        UpdatedAt = d.UpdatedAt,
+        IsDeleted = d.IsDeleted
+    };
 
-    private TransactionLocal ToLocal(TransactionDto d) =>
-        new()
-        {
-            Id = d.Id,
-            Amount = d.Amount,
-            Description = d.Description,
-            Date = d.Date,
+    private CreditCardLocal ToLocal(CreditCardDto d) => new()
+    {
+        Id = d.Id,
+        Name = d.Name,
+        Last4Digits = d.Last4Digits,
+        CreditLimit = d.CreditLimit,
+        CurrentInvoiceId = d.CurrentInvoiceId ?? Guid.Empty,
+        ClosingDay = d.ClosingDay,
+        DueDay = d.DueDay,
+        IsDeleted = d.IsDeleted,
+        CreatedAt = d.CreatedAt,
+        UpdatedAt = d.UpdatedAt
+    };
 
-            CategoryId = d.CategoryId,
-            Category = d.Category ?? "",     // <<< NOVO
-
-            Type = d.Type,                        // <<< NOVO
-            SubType = d.SubType,                  // <<< NOVO
-            Tags = d.Tags ?? "",                  // <<< NOVO
-
-            InstallmentNumber = d.InstallmentNumber,   // <<< NOVO
-            InstallmentTotal = d.InstallmentTotal,     // <<< NOVO
-            TransactionGroupId = d.TransactionGroupId, // <<< NOVO
-            IsRecurring = d.IsRecurring,               // <<< NOVO
-
-            IsDeleted = d.IsDeleted,
-            CreatedAt = d.CreatedAt,
-            UpdatedAt = d.UpdatedAt
-        };
-
-
-    private CreditCardLocal ToLocal(CreditCardDto d) =>
-        new()
-        {
-            Id = d.Id,
-            Name = d.Name,
-            Last4Digits = d.Last4Digits,
-            CreditLimit = d.CreditLimit,
-            CurrentInvoiceId = d.CurrentInvoiceId ?? Guid.Empty,
-            ClosingDay = d.ClosingDay,
-            DueDay = d.DueDay,
-            IsDeleted = d.IsDeleted,
-            CreatedAt = d.CreatedAt,
-            UpdatedAt = d.UpdatedAt
-        };
-
-    private InvoiceLocal ToLocal(InvoiceDto d) =>
-        new()
-        {
-            Id = d.Id,
-            CreditCardId = d.CreditCardId,
-            Month = d.Month,
-            Year = d.Year,
-            Total = d.Total,
-            PaidAmount = d.PaidAmount,
-            ClosingDate = d.ClosingDate,
-            DueDate = d.DueDate,
-            IsPaid = d.IsPaid,
-            IsDeleted = d.IsDeleted,
-            CreatedAt = d.CreatedAt,
-            UpdatedAt = d.UpdatedAt
-        };
+    private InvoiceLocal ToLocal(InvoiceDto d) => new()
+    {
+        Id = d.Id,
+        CreditCardId = d.CreditCardId,
+        Month = d.Month,
+        Year = d.Year,
+        Total = d.Total,
+        PaidAmount = d.PaidAmount,
+        ClosingDate = d.ClosingDate,
+        DueDate = d.DueDate,
+        IsPaid = d.IsPaid,
+        IsDeleted = d.IsDeleted,
+        CreatedAt = d.CreatedAt,
+        UpdatedAt = d.UpdatedAt
+    };
 }

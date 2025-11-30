@@ -26,7 +26,6 @@ public partial class HomeViewModel : BaseViewModel
     [ObservableProperty] private Axis[] xAxes = Array.Empty<Axis>();
     [ObservableProperty] private Axis[] yAxes = Array.Empty<Axis>();
 
-    // 👉 Comando público correto
     public IAsyncRelayCommand RefreshCommand { get; }
 
     public HomeViewModel(
@@ -42,11 +41,9 @@ public partial class HomeViewModel : BaseViewModel
 
         Title = "Dashboard";
 
-        // 👉 Inicializa o comando aqui (correto)
         RefreshCommand = new AsyncRelayCommand(RefreshAsync);
     }
 
-    // Inicialização
     public async Task InitializeAsync()
     {
         try
@@ -54,9 +51,7 @@ public partial class HomeViewModel : BaseViewModel
             LoadChart();
             await LoadFromCacheAsync();
 
-            // 👉 Executa o comando normalmente
             await RefreshCommand.ExecuteAsync(null);
-
             await LoadChartAsync();
         }
         catch (Exception ex)
@@ -70,8 +65,11 @@ public partial class HomeViewModel : BaseViewModel
     {
         try
         {
-            var accounts = await _local.GetAccountsAsync();
+            // ⬇️ Ajustado
+            var accounts = await _local.GetAllAccountsAsync();
+
             TotalBalance = accounts.Sum(a => a.Balance);
+
             StatusMessage = accounts.Any()
                 ? $"Atualizado localmente ({accounts.Count()} contas)"
                 : "Nenhuma conta encontrada";
@@ -119,6 +117,7 @@ public partial class HomeViewModel : BaseViewModel
                 RecentTransactions.Add(t);
 
             StatusMessage = $"Atualizado às {DateTime.Now:HH:mm}";
+
             await LoadChartAsync();
         }
         catch (Exception ex)
@@ -136,7 +135,9 @@ public partial class HomeViewModel : BaseViewModel
     {
         try
         {
-            var transactions = await _local.GetTransactionsAsync();
+            // ⬇️ Ajustado
+            var transactions = await _local.GetAllTransactionsAsync();
+
             var valid = transactions.Where(t => t.Date != default).ToList();
 
             var grouped = valid

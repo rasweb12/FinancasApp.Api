@@ -22,8 +22,6 @@ namespace FinancasApp.Mobile.Mappers
                 Month = dto.Month,
                 Year = dto.Year,
                 IsPaid = dto.IsPaid,
-                IsNew = dto.IsNew,
-                IsDirty = dto.IsDirty,
                 IsDeleted = dto.IsDeleted,
                 CreatedAt = dto.CreatedAt,
                 UpdatedAt = dto.UpdatedAt
@@ -46,8 +44,6 @@ namespace FinancasApp.Mobile.Mappers
                 Month = local.Month,
                 Year = local.Year,
                 IsPaid = local.IsPaid,
-                IsNew = local.IsNew,
-                IsDirty = local.IsDirty,
                 IsDeleted = local.IsDeleted,
                 CreatedAt = local.CreatedAt,
                 UpdatedAt = local.UpdatedAt
@@ -67,18 +63,15 @@ namespace FinancasApp.Mobile.Mappers
             local.Month = dto.Month;
             local.Year = dto.Year;
             local.IsPaid = dto.IsPaid;
-            local.IsNew = dto.IsNew;
-            local.IsDirty = dto.IsDirty;
             local.IsDeleted = dto.IsDeleted;
             local.UpdatedAt = dto.UpdatedAt;
         }
 
         // --------------------------------------------------------------
-        // Opcional: aplica alterações locais antes de enviar
+        // Opcional: aplicar alterações locais
         // --------------------------------------------------------------
         public static void ApplyLocalChanges(this InvoiceLocal local)
         {
-            local.IsDirty = true;
             local.UpdatedAt = DateTime.UtcNow;
         }
     }

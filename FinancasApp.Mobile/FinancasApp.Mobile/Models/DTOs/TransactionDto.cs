@@ -11,7 +11,7 @@ public class TransactionDto
     public decimal Amount { get; set; }
     public DateTime Date { get; set; }
 
-    public Guid? CategoryId { get; set; }          // ← Guid?, NÃO int?
+    public int? CategoryId { get; set; }  // ← mude no DTO
     public string Category { get; set; } = string.Empty;
 
     public string Type { get; set; } = "Expense";  // ← string
