@@ -123,4 +123,5 @@ public class SQLiteStorageService : ILocalStorageService
             .FirstOrDefault();
 
     public Task<int> SaveInvoiceAsync(InvoiceLocal i) => SaveAsync(i);
+    public Task<int> SaveCreditCardAsync(CreditCardLocal card) => SaveAsync(card);
 }

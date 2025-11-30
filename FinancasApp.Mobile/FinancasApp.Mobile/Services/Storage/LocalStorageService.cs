@@ -55,4 +55,5 @@ public class LocalStorageService : ILocalStorageService
         (await GetInvoicesAsync()).OrderByDescending(i => i.CreatedAt).FirstOrDefault();
 
     public Task<int> SaveInvoiceAsync(InvoiceLocal i) => SaveAsync(i);
+    public Task<int> SaveCreditCardAsync(CreditCardLocal card) => SaveAsync(card);
 }
