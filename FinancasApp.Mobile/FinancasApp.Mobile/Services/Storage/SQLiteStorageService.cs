@@ -74,16 +74,10 @@ public class SQLiteStorageService : ILocalStorageService
 
     public async Task<int> SaveInvoiceAsync(InvoiceLocal invoice)
     {
-        // Services/Sync/InvoiceSyncService.cs (trecho corrigido)
+        // ... seu código
         if (invoice.Id == Guid.Empty)
-        {
-            invoice.Id = Guid.NewGuid();
-            invoice.SyncStatus = SyncStatus.Pending;
-            invoice.CreatedAt = DateTime.UtcNow;
-        }
+            return await _invoiceRepo.InsertAsync(invoice);
         else
-        {
-            invoice.SyncStatus = SyncStatus.Pending;
-            invoice.UpdatedAt = DateTime.UtcNow;
-        }
+            return await _invoiceRepo.UpdateAsync(invoice);
     }
+}

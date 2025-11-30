@@ -1,13 +1,15 @@
-﻿using SQLite;
+﻿// Services/LocalDatabase/TagLocalRepository.cs
 using FinancasApp.Mobile.Models.Local;
+using SQLite;
 
-namespace FinancasApp.Mobile.Data
+namespace FinancasApp.Mobile.Services.LocalDatabase;
+
+public class TagLocalRepository : BaseRepository<TagLocal>
 {
-    public class TagLocalRepository : BaseRepository<TagLocal>
+    public TagLocalRepository(SQLiteAsyncConnection db) : base(db)
     {
-        public TagLocalRepository(SQLiteAsyncConnection db) : base(db)
-        {
-            _db.ExecuteAsync("CREATE INDEX IF NOT EXISTS idx_tag_name ON TagLocal(Name);").Wait();
-        }
+        db.ExecuteAsync(@"
+            CREATE INDEX IF NOT EXISTS idx_tag_name 
+            ON TagLocal(Name);").Wait();
     }
 }
