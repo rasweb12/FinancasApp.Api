@@ -1,51 +1,28 @@
-﻿using FinancasApp.Mobile.Models.Local;
-using SQLite;
+﻿// Services/Storage/ILocalStorageService.cs
+using FinancasApp.Mobile.Models.Local;
 
 namespace FinancasApp.Mobile.Services.Storage;
 
 public interface ILocalStorageService
 {
-    // Retorna a conexão (para repositórios especializados)
-    SQLiteAsyncConnection GetConnection();
-
-    // ======================================================================
-    // ACCOUNTS
-    // ======================================================================
-    Task SaveAccountAsync(AccountLocal account);
-    Task<List<AccountLocal>> GetAccountsAsync();
+    // Accounts
     Task<AccountLocal?> GetAccountByIdAsync(Guid id);
-    Task DeleteAccountAsync(Guid id);
+    Task<List<AccountLocal>> GetAllAccountsAsync();
+    Task<int> SaveAccountAsync(AccountLocal account);
 
-    // ======================================================================
-    // TRANSACTIONS
-    // ======================================================================
-    Task SaveTransactionAsync(TransactionLocal trx);
-    Task<List<TransactionLocal>> GetTransactionsAsync();
-    Task<List<TransactionLocal>> GetTransactionsByAccountAsync(Guid accountId);
-    Task<List<TransactionLocal>> GetPendingTransactionsAsync();
+    // Transactions
     Task<TransactionLocal?> GetTransactionByIdAsync(Guid id);
-    Task DeleteTransactionAsync(Guid id);
+    Task<List<TransactionLocal>> GetAllTransactionsAsync();
+    Task<int> SaveTransactionAsync(TransactionLocal transaction);
 
-    // ======================================================================
-    // CREDIT CARDS
-    // ======================================================================
-    Task SaveCreditCardAsync(CreditCardLocal card);
-    Task<List<CreditCardLocal>> GetCreditCardsAsync();
+    // Credit Cards
     Task<CreditCardLocal?> GetCreditCardByIdAsync(Guid id);
-    Task DeleteCreditCardAsync(Guid id);
+    Task<List<CreditCardLocal>> GetAllCreditCardsAsync();
+    Task<int> SaveCreditCardAsync(CreditCardLocal card);
 
-    // ======================================================================
-    // INVOICES
-    // ======================================================================
-    Task SaveInvoiceAsync(InvoiceLocal invoice);
-    Task<List<InvoiceLocal>> GetInvoicesAsync();
-    Task<List<InvoiceLocal>> GetInvoicesByCardAsync(Guid cardId);
-    Task<InvoiceLocal?> GetCurrentInvoiceAsync(Guid cardId, int month, int year);
+    // Invoices
     Task<InvoiceLocal?> GetInvoiceByIdAsync(Guid id);
-    Task DeleteInvoiceAsync(Guid id);
-
-    // ======================================================================
-    // SYNC
-    // ======================================================================
-    Task<List<object>> GetPendingSyncItemsAsync();
+    Task<List<InvoiceLocal>> GetAllInvoicesAsync();
+    Task<List<InvoiceLocal>> GetPendingInvoicesAsync();
+    Task<int> SaveInvoiceAsync(InvoiceLocal invoice);
 }

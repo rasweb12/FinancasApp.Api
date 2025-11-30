@@ -1,37 +1,20 @@
-﻿// InvoiceRepository.cs (CardStatement)
+﻿// Services/LocalDatabase/InvoiceRepository.cs
 using FinancasApp.Mobile.Models.Local;
-using FinancasApp.Mobile.Data;
-using FinancasApp.Mobile.Services;
-using FinancasApp.Mobile.Services.Storage;
+using SQLite;
 
+namespace FinancasApp.Mobile.Services.LocalDatabase;
 
-namespace FinancasApp.Mobile.Data;
-
-
-public interface ICardStatementRepository : IBaseRepository<InvoiceLocal>
+public class InvoiceRepository : BaseRepository<InvoiceLocal>, IBaseRepository<InvoiceLocal>
 {
-    Task<List<InvoiceLocal>> GetByCardIdAsync(Guid cardId);
-}
+    public InvoiceRepository(SQLiteAsyncConnection db) : base(db)
+    {
+    }
 
-
-public interface IBaseRepository<T>
-{
-    Task<List<T>> GetAllAsync();
-    Task<T?> GetByIdAsync(Guid id);
-    Task<int> InsertAsync(T entity);
-    Task<int> UpdateAsync(T entity);
-    Task<int> DeleteAsync(T entity);
-}
-
-
-
-public class CardStatementRepository : BaseRepository<InvoiceLocal>, ICardStatementRepository
-{
-    public CardStatementRepository(ILocalStorageService storage)
-        : base(storage) { }  // <<< Agora a BaseRepository recebe o ILocalStorageService
-
-    public Task<List<InvoiceLocal>> GetByCardIdAsync(Guid cardId) =>
-        _db.Table<InvoiceLocal>()
-           .Where(i => i.CreditCardId == cardId)
-           .ToListAsync();
+    // Métodos específicos de Invoice (se precisar)
+    public async Task<List<InvoiceLocal>> GetPendingAsync()
+    {
+        return await _db.Table<InvoiceLocal>()
+            .Where(i => i.SyncStatus == SyncStatus.Pending)
+            .ToListAsync();
+    }
 }
