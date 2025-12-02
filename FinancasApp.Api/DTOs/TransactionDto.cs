@@ -11,7 +11,7 @@ namespace FinancasApp.Api.DTOs
         public DateTime Date { get; set; }
 
         public int? CategoryId { get; set; }   // ALTERADO
-
+        public string Category { get; set; } = string.Empty;
         public string Type { get; set; }
         public int? SubType { get; set; }
         public string Tags { get; set; } = "";

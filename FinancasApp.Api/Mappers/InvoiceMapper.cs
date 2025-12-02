@@ -28,7 +28,7 @@ namespace FinancasApp.Api.Mappers
             return new Invoice
             {
                 Id = dto.Id,
-                UserId = userId,
+                UserId = dto.UserId,
 
                 CreditCardId = dto.CreditCardId,
                 ClosingDate = dto.ClosingDate,

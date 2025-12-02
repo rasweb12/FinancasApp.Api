@@ -17,14 +17,14 @@ public class CreditCardService : ICreditCardService
     public async Task<List<CreditCard>> GetAllAsync(Guid userId)
     {
         return await _db.CreditCards
-            .Where(c => c.UserId == userId.ToString())
+            .Where(c => c.UserId == userId)
             .ToListAsync();
     }
 
     public async Task<CreditCard?> GetByIdAsync(Guid id, Guid userId)
     {
         return await _db.CreditCards
-            .FirstOrDefaultAsync(c => c.Id == id && c.UserId == userId.ToString());
+            .FirstOrDefaultAsync(c => c.Id == id && c.UserId == userId);
     }
 
     public async Task<CreditCard> AddAsync(CreditCard card)
@@ -56,7 +56,7 @@ public class CreditCardService : ICreditCardService
         foreach (var dto in incoming)
         {
             var existing = await _db.CreditCards
-                .FirstOrDefaultAsync(x => x.Id == dto.Id && x.UserId == userId.ToString());
+                .FirstOrDefaultAsync(x => x.Id == dto.Id && x.UserId == userId);
 
             if (dto.IsDeleted)
             {
@@ -71,9 +71,9 @@ public class CreditCardService : ICreditCardService
                 var card = new CreditCard
                 {
                     Id = dto.Id,
-                    UserId = userId.ToString(),
+                    UserId = userId,
                     Name = dto.Name,
-                    Limit = dto.Limit,
+                    CreditLimit = dto.CreditLimit,
                     ClosingDay = dto.ClosingDay,
                     DueDay = dto.DueDay,
                     CreatedAt = DateTime.UtcNow
@@ -84,7 +84,7 @@ public class CreditCardService : ICreditCardService
             else
             {
                 existing.Name = dto.Name;
-                existing.Limit = dto.Limit;
+                existing.CreditLimit = dto.CreditLimit;
                 existing.ClosingDay = dto.ClosingDay;
                 existing.DueDay = dto.DueDay;
                 existing.UpdatedAt = DateTime.UtcNow;

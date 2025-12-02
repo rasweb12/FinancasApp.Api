@@ -1,4 +1,5 @@
-﻿using System;
+﻿using FinancasApp.Api.Models;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -10,6 +11,8 @@ public class InvoiceDto : ISyncableDto
 {
     public Guid Id { get; set; }
     public Guid CreditCardId { get; set; }
+    public Guid UserId { get; set; }
+    public User User { get; set; } = default!;
     public DateTime ClosingDate { get; set; }
     public DateTime DueDate { get; set; }
     public decimal Total { get; set; } // ✔ precisa existir

@@ -1,39 +1,31 @@
-﻿using FinancasApp.Api.Data;
+﻿// Services/TransactionService.cs
+using FinancasApp.Api.Data;
 using FinancasApp.Api.DTOs;
 using FinancasApp.Api.Models;
+using FinancasApp.Api.Models.Extensions;
 using Microsoft.EntityFrameworkCore;
 
 namespace FinancasApp.Api.Services;
 
 public interface ITransactionService
 {
-    Task SyncAsync(List<TransactionDto> items, Guid userId);
+    Task SyncAsync(List<TransactionDto> transactions, Guid userId);
     Task<List<Transaction>> GetAllAsync(Guid userId);
 }
 
 public class TransactionService : ITransactionService
 {
     private readonly AppDbContext _db;
+    public TransactionService(AppDbContext db) => _db = db;
 
-    public TransactionService(AppDbContext db)
-    {
-        _db = db;
-    }
-
-    // =====================================================================
-    // 📌 LISTAR TODAS (PARA RETORNO DO SYNC)
-    // =====================================================================
     public async Task<List<Transaction>> GetAllAsync(Guid userId)
     {
         return await _db.Transactions
-            .Where(t => t.UserId == userId)
+            .Where(t => t.UserId == userId && !t.IsDeleted)
             .OrderByDescending(t => t.Date)
             .ToListAsync();
     }
 
-    // =====================================================================
-    // 🔄 SYNC COMPLETO
-    // =====================================================================
     public async Task SyncAsync(List<TransactionDto> items, Guid userId)
     {
         foreach (var dto in items)
@@ -56,9 +48,6 @@ public class TransactionService : ITransactionService
         await _db.SaveChangesAsync();
     }
 
-    // =====================================================================
-    // 🔧 CRIAR OU ATUALIZAR (UP/SERT)
-    // =====================================================================
     private async Task UpsertAsync(TransactionDto dto, Guid userId)
     {
         var existing = await _db.Transactions
@@ -70,107 +59,86 @@ public class TransactionService : ITransactionService
             _db.Transactions.Add(entity);
             await AttachToInvoiceAsync(entity);
         }
-        else
+        else if (dto.UpdatedAt > existing.UpdatedAt || existing.IsDeleted)
         {
             ApplyUpdates(existing, dto);
+            existing.IsDeleted = false;
+            existing.MarkAsDirty();
         }
-    }
-
-    // =====================================================================
-    // ❌ DELETE
-    // =====================================================================
-    private async Task DeleteAsync(Guid id, Guid userId)
-    {
-        var existing = await _db.Transactions
-            .FirstOrDefaultAsync(t => t.Id == id && t.UserId == userId);
+        else
+        {
+            // Servidor mais novo → ignora atualização do mobile
+        }
 
         if (existing != null)
+            existing.MarkAsSynced();
+    }
+
+    private async Task DeleteAsync(Guid id, Guid userId)
+    {
+        var entity = await _db.Transactions
+            .FirstOrDefaultAsync(t => t.Id == id && t.UserId == userId);
+
+        if (entity != null)
         {
-            _db.Transactions.Remove(existing);
+            entity.IsDeleted = true;
+            entity.MarkAsDirty();
         }
     }
 
-    // =====================================================================
-    // 💳 PARCELAMENTO
-    // =====================================================================
     private async Task SyncInstallmentsAsync(TransactionDto dto, Guid userId)
     {
-        Guid groupId = dto.TransactionGroupId ?? Guid.NewGuid();
+        var groupId = dto.TransactionGroupId ?? Guid.NewGuid();
 
         for (int i = 1; i <= dto.InstallmentTotal; i++)
         {
             var installmentDate = dto.Date.AddMonths(i - 1);
-
-            var entity = new Transaction
+            var trx = new Transaction
             {
                 Id = Guid.NewGuid(),
                 UserId = userId,
                 AccountId = dto.AccountId,
-                CategoryId = dto.CategoryId,
-                Type = int.Parse(dto.Type),
-                SubType = dto.SubType,
-
                 Description = $"{dto.Description} ({i}/{dto.InstallmentTotal})",
                 Amount = dto.Amount,
                 Date = installmentDate,
+                Type = dto.Type,
+                SubType = dto.SubType,
+                CategoryId = dto.CategoryId,
                 Tags = dto.Tags,
-
                 InstallmentNumber = i,
                 InstallmentTotal = dto.InstallmentTotal,
                 TransactionGroupId = groupId,
+                IsRecurring = dto.IsRecurring,
+
+                // Sync fields
+                IsNew = true,
+                IsDirty = true,
+                IsDeleted = false,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
             };
 
-            _db.Transactions.Add(entity);
-
-            await AttachToInvoiceAsync(entity);
+            _db.Transactions.Add(trx);
+            await AttachToInvoiceAsync(trx);
         }
     }
 
-    // =====================================================================
-    // 🧾 LIGAR TRANSAÇÃO À FATURA CORRESPONDENTE
-    // =====================================================================
     private async Task AttachToInvoiceAsync(Transaction trx)
     {
-        var card = await _db.CreditCards
-            .FirstOrDefaultAsync(c => c.AccountId == trx.AccountId);
+        // CORRIGIDO: Cartão de crédito NÃO tem AccountId
+        // Vamos buscar por transações de cartão (Type == "CreditCardExpense") ou por outra lógica
+        // Por enquanto, vamos pular se não for despesa de cartão
+        if (trx.Type != "CreditCardExpense") return;
 
-        if (card == null)
-            return;
+        // Alternativa: buscar cartão pelo nome ou outra regra (ou deixar pra depois)
+        // Por enquanto, desativamos essa lógica até definirmos como identificar o cartão
+        return;
 
-        int month = trx.Date.Month;
-        int year = trx.Date.Year;
-
-        var invoice = await _db.Invoices
-            .FirstOrDefaultAsync(i =>
-                i.CreditCardId == card.Id &&
-                i.Month == month &&
-                i.Year == year
-            );
-
-        if (invoice == null)
-        {
-            invoice = new Invoice
-            {
-                Id = Guid.NewGuid(),
-                CreditCardId = card.Id,
-                Month = month,
-                Year = year,
-                Total = 0,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow,
-                UserId = trx.UserId.ToString()
-            };
-
-            _db.Invoices.Add(invoice);
-        }
-
-        invoice.Total += trx.Amount;
-        invoice.UpdatedAt = DateTime.UtcNow;
+        // Quando quiser reativar:
+        // var card = await _db.CreditCards.FirstOrDefaultAsync(...);
+        // então cria/atualiza invoice...
     }
 
-    // =====================================================================
-    // 🧩 MAP DTO → ENTITY
-    // =====================================================================
     private Transaction MapToEntity(TransactionDto dto, Guid userId)
     {
         return new Transaction
@@ -178,37 +146,41 @@ public class TransactionService : ITransactionService
             Id = dto.Id,
             UserId = userId,
             AccountId = dto.AccountId,
-            CategoryId = dto.CategoryId,
-            Type = int.Parse(dto.Type),
-            SubType = dto.SubType,
+            Description = dto.Description,
             Amount = dto.Amount,
             Date = dto.Date,
-            Description = dto.Description,
+            Type = dto.Type,
+            SubType = dto.SubType,
+            CategoryId = dto.CategoryId,
             Tags = dto.Tags,
             InstallmentNumber = dto.InstallmentNumber,
             InstallmentTotal = dto.InstallmentTotal,
-            IsRecurring = dto.IsRecurring,
             TransactionGroupId = dto.TransactionGroupId,
-            CreatedAt = DateTime.UtcNow
+            IsRecurring = dto.IsRecurring,
+
+            // Sync fields
+            IsNew = dto.IsNew,
+            IsDirty = true,
+            IsDeleted = false,
+            CreatedAt = dto.CreatedAt,
+            UpdatedAt = DateTime.UtcNow
         };
     }
 
-    // =====================================================================
-    // 🧩 APLICAR ATUALIZAÇÃO
-    // =====================================================================
     private void ApplyUpdates(Transaction entity, TransactionDto dto)
     {
         entity.AccountId = dto.AccountId;
-        entity.CategoryId = dto.CategoryId;
-        entity.Type = int.Parse(dto.Type);
-        entity.SubType = dto.SubType;
+        entity.Description = dto.Description;
         entity.Amount = dto.Amount;
         entity.Date = dto.Date;
-        entity.Description = dto.Description;
+        entity.Type = dto.Type;
+        entity.SubType = dto.SubType;
+        entity.CategoryId = dto.CategoryId;
         entity.Tags = dto.Tags;
         entity.InstallmentNumber = dto.InstallmentNumber;
         entity.InstallmentTotal = dto.InstallmentTotal;
-        entity.IsRecurring = dto.IsRecurring;
         entity.TransactionGroupId = dto.TransactionGroupId;
+        entity.IsRecurring = dto.IsRecurring;
+        entity.UpdatedAt = DateTime.UtcNow;
     }
 }

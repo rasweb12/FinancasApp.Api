@@ -1,103 +1,59 @@
-﻿using FinancasApp.Api.Data;
+﻿// Services/AccountService.cs
+using AutoMapper;
+using FinancasApp.Api.Data;
 using FinancasApp.Api.DTOs;
 using FinancasApp.Api.Models;
+using FinancasApp.Api.Models.Extensions;
 using Microsoft.EntityFrameworkCore;
 
-namespace FinancasApp.Api.Services
+namespace FinancasApp.Api.Services;
+
+public class AccountService : IAccountService
 {
-    public class AccountService : IAccountService
+    private readonly AppDbContext _context;
+    private readonly IMapper _mapper;
+
+    public AccountService(AppDbContext context, IMapper mapper)
     {
-        private readonly AppDbContext _db;
+        _context = context;
+        _mapper = mapper;
+    }
 
-        public AccountService(AppDbContext db)
+    public async Task SyncAsync(List<AccountDto> accounts, Guid userId)
+    {
+        foreach (var dto in accounts)
         {
-            _db = db;
-        }
-
-        // ============================================================
-        // 🔄 SYNC
-        // ============================================================
-        public async Task SyncAsync(List<AccountDto> accounts, Guid userId)
-        {
-            foreach (var dto in accounts)
-            {
-                if (dto.IsDeleted)
-                {
-                    await DeleteAsync(dto.Id, userId);
-                    continue;
-                }
-
-                if (dto.IsNew)
-                {
-                    await AddAsync(dto, userId);
-                    continue;
-                }
-
-                if (dto.IsDirty)
-                {
-                    await UpdateAsync(dto, userId);
-                    continue;
-                }
-            }
-
-            await _db.SaveChangesAsync();
-        }
-
-        // ============================================================
-        // 📌 LISTAR TODAS
-        // ============================================================
-        public async Task<List<Account>> GetAllAsync(Guid userId)
-        {
-            return await _db.Accounts
-                .Where(a => a.UserId == userId)
-                .ToListAsync();
-        }
-
-        // ============================================================
-        // ➕ ADD
-        // ============================================================
-        private async Task AddAsync(AccountDto dto, Guid userId)
-        {
-            var entity = new Account
-            {
-                Id = dto.Id,
-                Name = dto.Name,
-                Balance = dto.Balance,
-                Type = dto.Type,
-                Currency = "BRL",
-                UserId = userId,
-                CreatedAt = DateTime.UtcNow
-            };
-
-            _db.Accounts.Add(entity);
-        }
-
-        // ============================================================
-        // ✏ UPDATE
-        // ============================================================
-        private async Task UpdateAsync(AccountDto dto, Guid userId)
-        {
-            var entity = await _db.Accounts
-                .FirstOrDefaultAsync(a => a.Id == dto.Id && a.UserId == userId);
+            var entity = await _context.Accounts.FindAsync(dto.Id);
 
             if (entity == null)
-                return;
+            {
+                entity = _mapper.Map<Account>(dto);
+                entity.UserId = userId;
+                _context.Accounts.Add(entity);
+            }
+            else if (dto.IsDeleted)
+            {
+                entity.IsDeleted = true;
+                entity.MarkAsDirty();
+            }
+            else if (dto.UpdatedAt > entity.UpdatedAt)
+            {
+                _mapper.Map(dto, entity);
+                entity.UserId = userId;
+                entity.MarkAsDirty();
+            }
 
-            entity.Name = dto.Name;
-            entity.Balance = dto.Balance;
-            entity.Type = dto.Type;
+            if (!dto.IsDeleted && (entity.IsNew || entity.IsDirty))
+                entity.MarkAsSynced();
         }
 
-        // ============================================================
-        // ❌ DELETE
-        // ============================================================
-        private async Task DeleteAsync(Guid id, Guid userId)
-        {
-            var entity = await _db.Accounts
-                .FirstOrDefaultAsync(a => a.Id == id && a.UserId == userId);
+        await _context.SaveChangesAsync();
+    }
 
-            if (entity != null)
-                _db.Accounts.Remove(entity);
-        }
+    public async Task<List<Account>> GetAllAsync(Guid userId)
+    {
+        return await _context.Accounts
+            .Where(a => a.UserId == userId && !a.IsDeleted)
+            .ToListAsync();
     }
 }

@@ -1,5 +1,5 @@
-﻿using FinancasApp.Api.DTOs;
-using FinancasApp.Api.Models;
+﻿// Controllers/SyncController.cs
+using FinancasApp.Api.DTOs;
 using FinancasApp.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -29,35 +29,20 @@ public class SyncController : ControllerBase
         _invoiceService = invoiceService;
     }
 
-    private Guid GetUserId()
-    {
-        return Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-    }
+    private Guid GetUserId() => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
-    // =============================================================
-    // ========================   SYNC   ============================
-    // =============================================================
     [HttpPost]
     public async Task<IActionResult> Sync([FromBody] SyncRequestDto request)
     {
         var userId = GetUserId();
 
-        // ---- ACCOUNTS ----------------------------------------------------------
+        // UPLOAD: sincroniza dados do celular → servidor
         await _accountService.SyncAsync(request.Accounts, userId);
-
-        // ---- CREDIT CARDS ------------------------------------------------------
         await _creditCardService.SyncAsync(request.CreditCards, userId);
-
-        // ---- INVOICES ----------------------------------------------------------
         await _invoiceService.SyncAsync(request.Invoices, userId);
-
-        // ---- TRANSACTIONS ------------------------------------------------------
         await _transactionService.SyncAsync(request.Transactions, userId);
 
-        // ------------------------------------------------------------
-        // RETORNAR TUDO ATUALIZADO PARA O CELULAR
-        // ------------------------------------------------------------
-
+        // DOWNLOAD: retorna tudo atualizado pro celular
         var accounts = await _accountService.GetAllAsync(userId);
         var creditCards = await _creditCardService.GetAllAsync(userId);
         var invoices = await _invoiceService.GetAllAsync(userId);
@@ -69,23 +54,27 @@ public class SyncController : ControllerBase
             {
                 Id = a.Id,
                 Name = a.Name,
-                Balance = a.Balance,
                 AccountType = a.AccountType,
-                IsNew = false,
-                IsDirty = false,
-                IsDeleted = false
+                Currency = a.Currency,
+                Balance = a.Balance,
+                InitialBalance = a.InitialBalance,
+                IsDeleted = a.IsDeleted,
+                UpdatedAt = a.UpdatedAt,
+                CreatedAt = a.CreatedAt
             }).ToList(),
 
             CreditCards = creditCards.Select(c => new CreditCardDto
             {
                 Id = c.Id,
                 Name = c.Name,
+                Last4Digits = c.Last4Digits,
                 CreditLimit = c.CreditLimit,
-                ClosingDay = c.ClosingDay,
                 DueDay = c.DueDay,
-                IsNew = false,
-                IsDirty = false,
-                IsDeleted = false
+                ClosingDay = c.ClosingDay,
+                CurrentInvoiceId = c.CurrentInvoiceId,
+                IsDeleted = c.IsDeleted,
+                UpdatedAt = c.UpdatedAt,
+                CreatedAt = c.CreatedAt
             }).ToList(),
 
             Invoices = invoices.Select(i => new InvoiceDto
@@ -95,9 +84,11 @@ public class SyncController : ControllerBase
                 Month = i.Month,
                 Year = i.Year,
                 Total = i.Total,
-                IsNew = false,
-                IsDirty = false,
-                IsDeleted = false
+                PaidAmount = i.PaidAmount,
+                IsPaid = i.IsPaid,
+                IsDeleted = i.IsDeleted,
+                UpdatedAt = i.UpdatedAt,
+                CreatedAt = i.CreatedAt
             }).ToList(),
 
             Transactions = transactions.Select(t => new TransactionDto
@@ -107,16 +98,17 @@ public class SyncController : ControllerBase
                 Description = t.Description ?? "",
                 Amount = t.Amount,
                 Date = t.Date,
+                Category = t.Category,
                 Type = t.Type.ToString(),
                 SubType = t.SubType,
                 Tags = t.Tags,
                 InstallmentNumber = t.InstallmentNumber,
                 InstallmentTotal = t.InstallmentTotal,
-                IsRecurring = t.IsRecurring,
                 TransactionGroupId = t.TransactionGroupId,
-                IsNew = false,
-                IsDirty = false,
-                IsDeleted = false
+                IsRecurring = t.IsRecurring,
+                IsDeleted = t.IsDeleted,
+                UpdatedAt = t.UpdatedAt,
+                CreatedAt = t.CreatedAt
             }).ToList()
         });
     }
