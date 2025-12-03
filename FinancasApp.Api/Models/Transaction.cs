@@ -13,37 +13,36 @@ public class Transaction : ISyncableEntity
 
     public Guid UserId { get; set; }
     public User User { get; set; } = null!;
+
     public Guid? CreditCardId { get; set; }
     public CreditCard? CreditCard { get; set; }
+
     public string Description { get; set; } = string.Empty;
     public decimal Amount { get; set; }
     public DateTime Date { get; set; } = DateTime.UtcNow;
 
+    // === RELACIONAMENTO COM CATEGORIA (CORRETO) ===
     public int? CategoryId { get; set; }
-    public string Category { get; set; } = string.Empty;
+    public Category? Category { get; set; } = null!;  // ← ADICIONADO (obrigatório pro EF)
 
-    // Tipo da transação: "Income", "Expense", "Transfer"
+    // Remova esta linha! Ela que estava quebrando tudo:
+    // public string Category { get; set; } = string.Empty;  ← DELETE ESSA PORRA
+
     public string Type { get; set; } = "Expense";
-
-    // SubType: ex: "Salary", "Food", "Transport", "Investment" → pra relatórios futuros
     public int? SubType { get; set; }
-
-    // Tags como CSV: "supermercado, comida, urgente"
     public string Tags { get; set; } = string.Empty;
 
     public int? InstallmentNumber { get; set; }
     public int? InstallmentTotal { get; set; }
     public Guid? TransactionGroupId { get; set; }
-
     public bool IsRecurring { get; set; }
 
-    // === Campos de Sync (ISyncableEntity) ===
+    // Sync fields
     public bool IsNew { get; set; } = true;
     public bool IsDirty { get; set; } = true;
     public bool IsDeleted { get; set; } = false;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
-    // Relacionamento N:N com Tag
     public List<TransactionTag> TransactionTags { get; set; } = new();
 }

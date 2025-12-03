@@ -9,6 +9,7 @@
   <ItemGroup>
     <!-- Use a versão mais recente da série 9.x -->
     <PackageReference Include="AutoMapper.Extensions.Microsoft.DependencyInjection" Version="12.0.1" />
+    <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.10" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="9.0.10" />
     <PackageReference Include="IdentityServer3.Localization" Version="0.3.200" />
@@ -26,14 +27,20 @@
     <PackageReference Include="NBitcoin" Version="9.0.3" />
     <PackageReference Include="Octopus.Client" Version="19.1.2432" />
     <PackageReference Include="SendGrid" Version="9.29.3" />
-    <PackageReference Include="Swashbuckle.AspNetCore" Version="10.0.1" />
-    <PackageReference Include="Swashbuckle.AspNetCore.SwaggerGen" Version="10.0.1" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="9.0.6" />
+    <PackageReference Include="Swashbuckle.AspNetCore.SwaggerGen" Version="9.0.6" />
     <PackageReference Include="Umbraco.Cms.Core" Version="16.3.4" />
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Data\Migrations\" />
-    <Folder Include="Repository\" />
+    <!-- Só mantém pastas que REALMENTE existem e têm arquivos -->
+    <Folder Include="Data\Migrations\" Condition="Exists('Data\Migrations')" />
+    <Folder Include="Migrations\" Condition="Exists('Migrations')" />
+    <Folder Include="Repository\" Condition="Exists('Repository')" />
+
+    <!-- Se você usa essas pastas no projeto, pode deixar sem condição (mais simples) -->
+    <!-- <Folder Include="Data\Migrations\" /> -->
+    <!-- <Folder Include="Repository\" /> -->
   </ItemGroup>
 
 </Project>

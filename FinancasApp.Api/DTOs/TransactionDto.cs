@@ -10,8 +10,8 @@ namespace FinancasApp.Api.DTOs
         public decimal Amount { get; set; }
         public DateTime Date { get; set; }
 
-        public int? CategoryId { get; set; }   // ALTERADO
-        public string Category { get; set; } = string.Empty;
+        public int? CategoryId { get; set; }           // ← ID da categoria
+        public string Category { get; set; } = ""; // ← Nome pra exibir no mobile
         public string Type { get; set; }
         public int? SubType { get; set; }
         public string Tags { get; set; } = "";

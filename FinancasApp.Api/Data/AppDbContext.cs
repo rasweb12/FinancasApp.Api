@@ -72,12 +72,19 @@ public class AppDbContext : DbContext
             .HasForeignKey(i => i.CreditCardId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        // Invoice -> User (1:N)
+        // Invoice -> User (1:N) — CORRIGIDO
         modelBuilder.Entity<Invoice>()
             .HasOne(i => i.User)
             .WithMany(u => u.Invoices)
             .HasForeignKey(i => i.UserId)
-            .OnDelete(DeleteBehavior.Cascade);
+            .OnDelete(DeleteBehavior.Restrict); // ← RESOLVIDO O CICLO
+
+        // Category -> Transactions (1:N) — ADICIONE ISSO
+        modelBuilder.Entity<Category>()
+            .HasMany(c => c.Transactions)
+            .WithOne(t => t.Category)
+            .HasForeignKey(t => t.CategoryId)
+            .OnDelete(DeleteBehavior.SetNull);
 
         // Monetary Precision
         modelBuilder.Entity<Transaction>()

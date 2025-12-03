@@ -42,9 +42,24 @@ namespace FinancasApp.Api.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<decimal>("InitialBalance")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDirty")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsNew")
+                        .HasColumnType("bit");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("uniqueidentifier");
@@ -85,14 +100,37 @@ namespace FinancasApp.Api.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<int>("ClosingDay")
+                        .HasColumnType("int");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
+
+                    b.Property<decimal>("CreditLimit")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<Guid?>("CurrentInvoiceId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("CurrentInvoiceId1")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<int>("DueDay")
                         .HasColumnType("int");
 
-                    b.Property<decimal>("Limit")
-                        .HasColumnType("decimal(18,2)");
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDirty")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsNew")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Last4Digits")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -101,48 +139,16 @@ namespace FinancasApp.Api.Migrations
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CurrentInvoiceId1");
+
+                    b.HasIndex("UserId");
 
                     b.ToTable("CreditCards");
-                });
-
-            modelBuilder.Entity("FinancasApp.Api.Models.Invoice", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<Guid>("CreditCardId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<int>("Month")
-                        .HasColumnType("int");
-
-                    b.Property<decimal>("Total")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("Year")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CreditCardId");
-
-                    b.ToTable("Invoices");
                 });
 
             modelBuilder.Entity("FinancasApp.Api.Models.Tag", b =>
@@ -181,10 +187,14 @@ namespace FinancasApp.Api.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<Guid?>("CreditCardId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<DateTime>("Date")
                         .HasColumnType("datetime2");
 
                     b.Property<string>("Description")
+                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<int?>("InstallmentNumber")
@@ -192,6 +202,15 @@ namespace FinancasApp.Api.Migrations
 
                     b.Property<int?>("InstallmentTotal")
                         .HasColumnType("int");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDirty")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsNew")
+                        .HasColumnType("bit");
 
                     b.Property<bool>("IsRecurring")
                         .HasColumnType("bit");
@@ -203,8 +222,15 @@ namespace FinancasApp.Api.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int>("Type")
-                        .HasColumnType("int");
+                    b.Property<Guid?>("TransactionGroupId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("uniqueidentifier");
@@ -215,7 +241,9 @@ namespace FinancasApp.Api.Migrations
 
                     b.HasIndex("CategoryId");
 
-                    b.HasIndex("UserId");
+                    b.HasIndex("CreditCardId");
+
+                    b.HasIndex("UserId", "AccountId", "Date");
 
                     b.ToTable("Transactions");
                 });
@@ -235,7 +263,66 @@ namespace FinancasApp.Api.Migrations
                     b.ToTable("TransactionTags");
                 });
 
-            modelBuilder.Entity("FinancasApp.Api.Models.User", b =>
+            modelBuilder.Entity("Invoice", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("ClosingDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("CreditCardId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("DueDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDirty")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsNew")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsPaid")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("Month")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("PaidAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("Total")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Year")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreditCardId");
+
+                    b.HasIndex("UserId", "CreditCardId", "Month", "Year");
+
+                    b.ToTable("Invoices");
+                });
+
+            modelBuilder.Entity("User", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -251,9 +338,21 @@ namespace FinancasApp.Api.Migrations
                     b.Property<string>("FullName")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDirty")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsNew")
+                        .HasColumnType("bit");
+
                     b.Property<string>("PasswordHash")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
 
                     b.HasKey("Id");
 
@@ -262,7 +361,7 @@ namespace FinancasApp.Api.Migrations
 
             modelBuilder.Entity("FinancasApp.Api.Models.Account", b =>
                 {
-                    b.HasOne("FinancasApp.Api.Models.User", "User")
+                    b.HasOne("User", "User")
                         .WithMany("Accounts")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -271,15 +370,21 @@ namespace FinancasApp.Api.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("FinancasApp.Api.Models.Invoice", b =>
+            modelBuilder.Entity("FinancasApp.Api.Models.CreditCard", b =>
                 {
-                    b.HasOne("FinancasApp.Api.Models.CreditCard", "CreditCard")
-                        .WithMany("Invoices")
-                        .HasForeignKey("CreditCardId")
+                    b.HasOne("Invoice", "CurrentInvoice")
+                        .WithMany()
+                        .HasForeignKey("CurrentInvoiceId1");
+
+                    b.HasOne("User", "User")
+                        .WithMany("CreditCards")
+                        .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("CreditCard");
+                    b.Navigation("CurrentInvoice");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("FinancasApp.Api.Models.Transaction", b =>
@@ -293,9 +398,13 @@ namespace FinancasApp.Api.Migrations
                     b.HasOne("FinancasApp.Api.Models.Category", "Category")
                         .WithMany("Transactions")
                         .HasForeignKey("CategoryId")
-                        .OnDelete(DeleteBehavior.Restrict);
+                        .OnDelete(DeleteBehavior.SetNull);
 
-                    b.HasOne("FinancasApp.Api.Models.User", "User")
+                    b.HasOne("FinancasApp.Api.Models.CreditCard", "CreditCard")
+                        .WithMany()
+                        .HasForeignKey("CreditCardId");
+
+                    b.HasOne("User", "User")
                         .WithMany("Transactions")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -304,6 +413,8 @@ namespace FinancasApp.Api.Migrations
                     b.Navigation("Account");
 
                     b.Navigation("Category");
+
+                    b.Navigation("CreditCard");
 
                     b.Navigation("User");
                 });
@@ -325,6 +436,25 @@ namespace FinancasApp.Api.Migrations
                     b.Navigation("Tag");
 
                     b.Navigation("Transaction");
+                });
+
+            modelBuilder.Entity("Invoice", b =>
+                {
+                    b.HasOne("FinancasApp.Api.Models.CreditCard", "CreditCard")
+                        .WithMany("Invoices")
+                        .HasForeignKey("CreditCardId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("User", "User")
+                        .WithMany("Invoices")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("CreditCard");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("FinancasApp.Api.Models.Account", b =>
@@ -352,9 +482,13 @@ namespace FinancasApp.Api.Migrations
                     b.Navigation("TransactionTags");
                 });
 
-            modelBuilder.Entity("FinancasApp.Api.Models.User", b =>
+            modelBuilder.Entity("User", b =>
                 {
                     b.Navigation("Accounts");
+
+                    b.Navigation("CreditCards");
+
+                    b.Navigation("Invoices");
 
                     b.Navigation("Transactions");
                 });

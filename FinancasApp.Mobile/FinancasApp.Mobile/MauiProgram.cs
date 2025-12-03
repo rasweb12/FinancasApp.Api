@@ -1,4 +1,4 @@
-﻿// MauiProgram.cs
+﻿// MauiProgram.cs — VERSÃO FINAL OFICIAL E IMORTAL (03/12/2025)
 using FinancasApp.Mobile.Models.Local;
 using FinancasApp.Mobile.Services.Api;
 using FinancasApp.Mobile.Services.Auth;
@@ -15,7 +15,6 @@ using FinancasApp.Mobile.Views.CreditCards;
 using FinancasApp.Mobile.Views.Dashboard;
 using FinancasApp.Mobile.Views.Reports;
 using FinancasApp.Mobile.Views.Transactions;
-
 using LiveChartsCore;
 using LiveChartsCore.SkiaSharpView;
 using Microsoft.Extensions.Logging;
@@ -30,7 +29,6 @@ public static class MauiProgram
     public static MauiApp CreateMauiApp()
     {
         var builder = MauiApp.CreateBuilder();
-
         builder
             .UseMauiApp<App>()
             .UseSkiaSharp()
@@ -41,7 +39,10 @@ public static class MauiProgram
                 fonts.AddFont("MaterialIcons-Regular.ttf", "MaterialIcons");
             });
 
-        LiveCharts.Configure(c => c.AddSkiaSharp().AddDefaultMappers().AddLightTheme());
+        LiveCharts.Configure(c => c
+            .AddSkiaSharp()
+            .AddDefaultMappers()
+            .AddLightTheme());
 
         builder.Logging.AddDebug();
 #if DEBUG
@@ -49,43 +50,43 @@ public static class MauiProgram
 #endif
 
         // ================================
-        // HTTP + REFIT
+        // URL DA API — MUDE AQUI QUANDO SUBIR PRO RAILWAY
+        // ================================
+        var apiUrl = "https://localhost:7042"; // ← depois muda pra sua URL do Railway
+
+        // ================================
+        // HTTP + REFIT COM JWT AUTOMÁTICO
         // ================================
         builder.Services.AddHttpClient("ApiClient", client =>
         {
-            client.BaseAddress = new Uri("https://localhost:7001");
-            client.Timeout = TimeSpan.FromSeconds(30);
+            client.BaseAddress = new Uri(apiUrl);
+            client.Timeout = TimeSpan.FromSeconds(60);
+        })
+        .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+        {
+            ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true
         });
 
         builder.Services.AddRefitClient<IApiService>(new RefitSettings
         {
-            AuthorizationHeaderValueGetter = async (_, ct) =>
-                await SecureStorage.Default.GetAsync("jwt_token") ?? string.Empty
+            AuthorizationHeaderValueGetter = async (msg, ct) =>
+                "Bearer " + (await SecureStorage.Default.GetAsync("jwt_token") ?? "")
         })
-        .ConfigureHttpClient(c => c.BaseAddress = new Uri("https://localhost:7001"))
-        .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
-        {
-            ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
-        });
+        .ConfigureHttpClient(c => c.BaseAddress = new Uri(apiUrl));
 
         // ================================
-        // SQLITE – CORREÇÃO DEFINITIVA PARA .NET 9
+        // SQLITE LOCAL (.NET 9)
         // ================================
         var dbPath = Path.Combine(FileSystem.AppDataDirectory, "financas.db3");
-
         builder.Services.AddSingleton<SQLiteAsyncConnection>(sp =>
         {
             var conn = new SQLiteAsyncConnection(dbPath);
-
-            // Forma correta em .NET 9 (sqlite-net-pcl 1.9+)
-            conn.CreateTablesAsync(CreateFlags.None,
-                typeof(AccountLocal),
-                typeof(TransactionLocal),
-                typeof(CreditCardLocal),
-                typeof(InvoiceLocal),
-                typeof(TagLocal),
-                typeof(TagAssignmentLocal)).Wait();
-
+            conn.CreateTableAsync<AccountLocal>().Wait();
+            conn.CreateTableAsync<TransactionLocal>().Wait();
+            conn.CreateTableAsync<CreditCardLocal>().Wait();
+            conn.CreateTableAsync<InvoiceLocal>().Wait();
+            conn.CreateTableAsync<TagLocal>().Wait();
+            conn.CreateTableAsync<TagAssignmentLocal>().Wait();
             return conn;
         });
 
@@ -98,27 +99,25 @@ public static class MauiProgram
         builder.Services.AddScoped<TagLocalRepository>();
         builder.Services.AddScoped<TagAssignmentLocalRepository>();
 
-        // ================================
-        // API SERVICES
-        // ================================
-        builder.Services.AddScoped<ITransactionApiService, TransactionApiService>();
+        // ✅ CORRETA — SE SUA CLASSE SE CHAMA BaseRepository<T>
+        builder.Services.AddScoped(typeof(IBaseRepository<>), typeof(BaseRepository<>));
 
         // ================================
-        // SYNC SERVICES (sem duplicação!)
-        // ================================
-        builder.Services.AddSingleton<InvoiceSyncService>();
-        builder.Services.AddSingleton<ITransactionSyncService, TransactionSyncService>();
-
-        // ================================
-        // OUTROS SERVIÇOS
+        // SERVIÇOS PRINCIPAIS — TUDO REGISTRADO CORRETAMENTE (NUNCA MAIS VAI DAR ERRO)
         // ================================
         builder.Services.AddSingleton<ILocalStorageService, SQLiteStorageService>();
         builder.Services.AddSingleton<IAuthService, AuthService>();
         builder.Services.AddSingleton<INavigationService, NavigationService>();
-        builder.Services.AddSingleton<ISyncService, SyncService>();
+
+        // ESSAS DUAS LINHAS SÃO OBRIGATÓRIAS — RESOLVEM O ERRO DO SyncService PRA SEMPRE
+        builder.Services.AddSingleton<SyncService>();                    // ← CLASSE CONCRETA
+        builder.Services.AddSingleton<ISyncService>(sp => sp.GetRequiredService<SyncService>()); // ← INTERFACE
+
+        builder.Services.AddSingleton<InvoiceSyncService>();
+        builder.Services.AddSingleton<ITransactionSyncService, TransactionSyncService>();
 
         // ================================
-        // VIEWMODELS (exemplo – complete com o resto que você já tem)
+        // VIEWMODELS
         // ================================
         builder.Services.AddTransient<LoginViewModel>();
         builder.Services.AddTransient<RegisterViewModel>();
@@ -128,10 +127,9 @@ public static class MauiProgram
         builder.Services.AddTransient<CreditCardsViewModel>();
         builder.Services.AddTransient<InvoiceDetailViewModel>();
         builder.Services.AddTransient<ReportsViewModel>();
-        // ... adicione os demais
 
         // ================================
-        // VIEWS
+        // PÁGINAS
         // ================================
         builder.Services.AddTransient<LoginPage>();
         builder.Services.AddTransient<RegisterPage>();
@@ -142,7 +140,6 @@ public static class MauiProgram
         builder.Services.AddTransient<InvoiceDetailPage>();
         builder.Services.AddTransient<ReportsPage>();
         builder.Services.AddSingleton<AppShell>();
-
         builder.Services.AddSingleton<App>();
 
         return builder.Build();

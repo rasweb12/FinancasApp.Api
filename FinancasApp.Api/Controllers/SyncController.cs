@@ -98,7 +98,8 @@ public class SyncController : ControllerBase
                 Description = t.Description ?? "",
                 Amount = t.Amount,
                 Date = t.Date,
-                Category = t.Category,
+                CategoryId = t.Category?.Id,           // ← CORRETO: manda o ID da categoria
+                Category = t.Category?.Name ?? "",  // ← manda o nome pra exibir no mobile
                 Type = t.Type.ToString(),
                 SubType = t.SubType,
                 Tags = t.Tags,
