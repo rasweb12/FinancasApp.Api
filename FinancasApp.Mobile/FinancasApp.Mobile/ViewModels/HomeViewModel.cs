@@ -95,14 +95,14 @@ public partial class HomeViewModel : ObservableObject
 
         try
         {
-            await _sync.SyncAllAsync();
+            await _sync.SyncAllAsync(); // ← CHAMA DIRETO DO SyncService
             await LoadFromCacheAsync();
             await LoadChartAsync();
             StatusMessage = $"Atualizado • {DateTime.Now:HH:mm}";
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Sincronização falhou");
+            _logger.LogWarning(ex, "Sync falhou");
             StatusMessage = "Offline • dados locais";
         }
         finally

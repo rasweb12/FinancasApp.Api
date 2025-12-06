@@ -50,7 +50,10 @@ public interface IApiService
     // ==============================
     // AUTH
     // ==============================
-
     [Post("/auth/login")]
     Task<LoginResponse> LoginAsync([Body] LoginRequest request);
+
+    [Post("/auth/register")]
+    Task<LoginResponse> RegisterAsync([Body] RegisterRequest request);  // ← Novo: assume mesmo response que login
+
 }

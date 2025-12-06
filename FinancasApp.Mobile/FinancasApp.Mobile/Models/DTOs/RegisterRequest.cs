@@ -1,10 +1,12 @@
-﻿// Models/DTOs/LoginRequest.cs
-using System.Text.Json.Serialization;
+﻿using System.Text.Json.Serialization;
 
 namespace FinancasApp.Mobile.Models.DTOs;
 
-public class LoginRequest
+public class RegisterRequest
 {
+    [JsonPropertyName("fullName")]
+    public string FullName { get; set; } = string.Empty;
+
     [JsonPropertyName("email")]
     public string Email { get; set; } = string.Empty;
 

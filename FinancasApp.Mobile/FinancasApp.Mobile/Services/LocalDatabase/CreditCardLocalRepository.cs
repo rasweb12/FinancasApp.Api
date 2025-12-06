@@ -4,7 +4,7 @@ using SQLite;
 
 namespace FinancasApp.Mobile.Services.LocalDatabase;
 
-public class CreditCardLocalRepository : BaseRepository<CreditCardLocal>
+public class CreditCardLocalRepository : Repository<CreditCardLocal>
 {
     public CreditCardLocalRepository(SQLiteAsyncConnection db) : base(db)
     {

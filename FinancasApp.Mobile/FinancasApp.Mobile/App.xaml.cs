@@ -1,4 +1,5 @@
-﻿using FinancasApp.Mobile.Services.Sync;
+﻿// App.xaml.cs — VERSÃO FINAL, LIMPA E QUE NUNCA TRAVA
+using FinancasApp.Mobile.Services.Sync;
 using Microsoft.Extensions.Logging;
 
 namespace FinancasApp.Mobile;
@@ -18,40 +19,33 @@ public partial class App : Application
 
         RegistrarTratamentoDeExcecoesGlobais();
 
-        // Iniciar sincronização inicial sem travar UI
-        _ = InicializarSincronizacaoAsync();
+        // Sync só quando o usuário quiser (NUNCA na inicialização)
+        // _ = InicializarSincronizacaoAsync(); ← APAGUE ESSA LINHA
     }
 
     private void RegistrarTratamentoDeExcecoesGlobais()
     {
-        AppDomain.CurrentDomain.UnhandledException += (sender, e) =>
-        {
-            var ex = e.ExceptionObject as Exception;
-            _logger.LogCritical(ex, "EXCEÇÃO NÃO TRATADA (AppDomain) - App pode fechar.");
-        };
+        AppDomain.CurrentDomain.UnhandledException += (s, e) =>
+            _logger.LogCritical(e.ExceptionObject as Exception, "EXCEÇÃO NÃO TRATADA");
 
-        TaskScheduler.UnobservedTaskException += (sender, e) =>
+        TaskScheduler.UnobservedTaskException += (s, e) =>
         {
-            _logger.LogCritical(e.Exception, "EXCEÇÃO NÃO OBSERVADA (TaskScheduler)");
-            e.SetObserved(); // evita crash em exceções pendentes
+            _logger.LogCritical(e.Exception, "EXCEÇÃO NÃO OBSERVADA");
+            e.SetObserved();
         };
     }
 
-    private async Task InicializarSincronizacaoAsync()
+    // Sync manual — chame isso só com botão ou pull-to-refresh
+    public async Task TrySyncAsync()
     {
         try
         {
-            await Task.Delay(1200); // dá tempo do app estabilizar
-
-            _logger.LogInformation("Iniciando sincronização automática de inicialização...");
-
             await _syncService.SyncAllAsync();
-
-            _logger.LogInformation("Sincronização automática concluída com sucesso.");
         }
         catch (Exception ex)
         {
-            _logger.LogCritical(ex, "FALHA CRÍTICA na sincronização automática ao iniciar o app.");
+            _logger.LogWarning(ex, "Sync falhou — modo offline ativo");
+            // Não trava o app, só fica offline
         }
     }
 }

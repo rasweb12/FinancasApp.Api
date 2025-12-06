@@ -2,6 +2,7 @@
 <ContentPage x:Class="FinancasApp.Mobile.Views.Auth.RegisterPage"
              xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:FinancasApp.Mobile.ViewModels"
              Title="Criar Conta"
              BackgroundColor="#F8F9FA">
 
@@ -11,22 +12,23 @@
             <Label Text="Criar sua conta" FontSize="24" FontAttributes="Bold" HorizontalOptions="Center" />
 
             <Frame BackgroundColor="White" CornerRadius="12" Padding="15">
-                <Entry Placeholder="Nome completo" />
+                <Entry Placeholder="Nome completo" Text="{Binding FullName}" />
             </Frame>
 
             <Frame BackgroundColor="White" CornerRadius="12" Padding="15">
-                <Entry Placeholder="E-mail" Keyboard="Email" />
+                <Entry Placeholder="E-mail" Text="{Binding Email}" Keyboard="Email" />
             </Frame>
 
             <Frame BackgroundColor="White" CornerRadius="12" Padding="15">
-                <Entry Placeholder="Senha" IsPassword="True" />
+                <Entry Placeholder="Senha" Text="{Binding Password}" IsPassword="True" />
             </Frame>
 
             <Frame BackgroundColor="White" CornerRadius="12" Padding="15">
-                <Entry Placeholder="Confirmar senha" IsPassword="True" />
+                <Entry Placeholder="Confirmar senha" Text="{Binding ConfirmPassword}" IsPassword="True" />
             </Frame>
 
             <Button Text="Criar conta"
+                    Command="{Binding RegisterCommand}"
                     BackgroundColor="#512BD4"
                     TextColor="White"
                     CornerRadius="30"
@@ -37,6 +39,14 @@
                     BackgroundColor="Transparent"
                     TextColor="#512BD4"
                     Command="{Binding BackToLoginCommand}" />
+
+            <!-- Erro e Busy -->
+            <Label Text="{Binding ErrorMessage}" TextColor="Red" IsVisible="{Binding HasError}" />
+            <ActivityIndicator IsRunning="{Binding IsBusy}"
+                               IsVisible="{Binding IsBusy}"
+                               Color="#512BD4"
+                               HorizontalOptions="Center" />
+
         </StackLayout>
     </ScrollView>
 </ContentPage>

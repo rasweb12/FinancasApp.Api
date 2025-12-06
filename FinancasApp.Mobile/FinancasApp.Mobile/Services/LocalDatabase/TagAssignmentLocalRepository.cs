@@ -4,7 +4,7 @@ using SQLite;
 
 namespace FinancasApp.Mobile.Services.LocalDatabase;
 
-public class TagAssignmentLocalRepository : BaseRepository<TagAssignmentLocal>
+public class TagAssignmentLocalRepository : Repository<TagAssignmentLocal>
 {
     public TagAssignmentLocalRepository(SQLiteAsyncConnection db) : base(db)
     {

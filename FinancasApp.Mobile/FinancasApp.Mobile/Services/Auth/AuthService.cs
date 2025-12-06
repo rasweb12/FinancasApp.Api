@@ -1,7 +1,5 @@
-﻿// Services/AuthService.cs
-
-// Services/AuthService.cs
-using FinancasApp.Mobile.Models.DTOs;
+﻿using FinancasApp.Mobile.Models.DTOs;
+using Refit; // Para ApiException
 
 namespace FinancasApp.Mobile.Services.Auth;
 
@@ -27,34 +25,47 @@ public class AuthService : IAuthService
                 Password = password
             });
 
-            // CORRETO: LoginResponse já é o objeto retornado
+            Console.WriteLine($"[AUTH] Resposta recebida: Token={(string.IsNullOrEmpty(loginResponse?.Token) ? "NULO" : "OK")}, UserId={loginResponse?.UserId}");
+
             if (!string.IsNullOrEmpty(loginResponse?.Token))
             {
                 Token = loginResponse.Token;
-                await SecureStorage.SetAsync(Key, Token);
+                await SecureStorage.Default.SetAsync(Key, Token);
+                Console.WriteLine("[AUTH] Login bem-sucedido! Token salvo.");
                 return true;
             }
+            else
+            {
+                Console.WriteLine("[AUTH] Token veio vazio ou nulo");
+                return false;
+            }
+        }
+        catch (ApiException apiEx)
+        {
+            Console.WriteLine($"[AUTH] Erro API: {apiEx.StatusCode} - {apiEx.Content}");
+            return false;
         }
         catch (Exception ex)
         {
+            Console.WriteLine($"[AUTH] Exceção: {ex.Message}\n{ex.StackTrace}");
+            return false;
         }
-        return false;
     }
 
     public async Task SaveTokenAsync(string token)
     {
         Token = token;
-        await SecureStorage.SetAsync(Key, token);
+        await SecureStorage.Default.SetAsync(Key, token);
     }
 
     public async Task LoadTokenAsync()
     {
-        Token = await SecureStorage.GetAsync(Key) ?? string.Empty;
+        Token = await SecureStorage.Default.GetAsync(Key) ?? string.Empty;
     }
 
     public async Task LogoutAsync()
     {
         Token = string.Empty;
-        SecureStorage.Remove(Key);
+        SecureStorage.Default.Remove(Key);
     }
 }
