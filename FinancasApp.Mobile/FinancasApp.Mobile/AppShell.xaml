@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8" ?>
+<!-- ESSA LINHA É OBRIGATÓRIA NOS ARQUIVOS MAUI XAML -->
 <Shell
     x:Class="FinancasApp.Mobile.AppShell"
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
@@ -7,43 +8,38 @@
     xmlns:dashboard="clr-namespace:FinancasApp.Mobile.Views.Dashboard"
     xmlns:accounts="clr-namespace:FinancasApp.Mobile.Views.Accounts"
     xmlns:creditcards="clr-namespace:FinancasApp.Mobile.Views.CreditCards"
-    xmlns:reports="clr-namespace:FinancasApp.Mobile.Views.Reports">
+    xmlns:reports="clr-namespace:FinancasApp.Mobile.Views.Reports"
+    FlyoutBehavior="Flyout">
 
-    <!-- 🔐 PÁGINAS DE LOGIN (não aparecem no menu) -->
-
+    <!-- LOGIN E REGISTER (não aparecem no menu) -->
     <ShellContent
         Route="login"
-        FlyoutItemIsVisible="False"
-        ContentTemplate="{DataTemplate auth:LoginPage}" />
+        ContentTemplate="{DataTemplate auth:LoginPage}"
+        FlyoutItemIsVisible="False" />
 
-    <ShellContent 
+    <ShellContent
         Route="register"
-        FlyoutItemIsVisible="False"
-        ContentTemplate="{DataTemplate auth:RegisterPage}" />
+        ContentTemplate="{DataTemplate auth:RegisterPage}"
+        FlyoutItemIsVisible="False" />
 
-    <!-- 🌟 ÁREA PRINCIPAL DO APLICATIVO -->
+    <!-- DASHBOARD — PÁGINA INICIAL -->
+    <ShellContent
+        Route="home"
+        Title="Início"
+        Icon="home.png"
+        ContentTemplate="{DataTemplate dashboard:HomePage}" />
 
-    <FlyoutItem Title="Início" Icon="ic_home.png">
-        <ShellContent
-            Route="home"
-            ContentTemplate="{DataTemplate dashboard:HomePage}" />
+    <!-- MENU LATERAL -->
+    <FlyoutItem Title="Contas" Icon="account_balance.png">
+        <ShellContent Route="accounts" ContentTemplate="{DataTemplate accounts:AccountsPage}" />
     </FlyoutItem>
 
-    <FlyoutItem Title="Contas" Icon="ic_accounts.png">
-        <ShellContent
-            Route="accounts"
-            ContentTemplate="{DataTemplate accounts:AccountsPage}" />
+    <FlyoutItem Title="Cartões" Icon="credit_card.png">
+        <ShellContent Route="creditcards" ContentTemplate="{DataTemplate creditcards:CreditCardsPage}" />
     </FlyoutItem>
 
-    <FlyoutItem Title="Cartões" Icon="ic_creditcard.png">
-        <ShellContent
-            Route="creditcards"
-            ContentTemplate="{DataTemplate creditcards:CreditCardsPage}" />
+    <FlyoutItem Title="Relatórios" Icon="bar_chart.png">
+        <ShellContent Route="reports" ContentTemplate="{DataTemplate reports:ReportsPage}" />
     </FlyoutItem>
 
-    <FlyoutItem Title="Relatórios" Icon="ic_reports.png">
-        <ShellContent
-            Route="reports"
-            ContentTemplate="{DataTemplate reports:ReportsPage}" />
-    </FlyoutItem>
 </Shell>

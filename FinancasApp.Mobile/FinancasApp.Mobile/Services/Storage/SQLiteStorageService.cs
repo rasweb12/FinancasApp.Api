@@ -1,4 +1,5 @@
-﻿// Services/Storage/SQLiteStorageService.cs — VERSÃO FINAL, LIMPA, MODERNA E IMORTAL
+﻿// Services/Storage/SQLiteStorageService.cs
+// VERSÃO FINAL, LIMPA, MODERNA E IMORTAL — 06/12/2025
 using FinancasApp.Mobile.Models.Local;
 using FinancasApp.Mobile.Services.LocalDatabase;
 
@@ -29,7 +30,9 @@ public class SQLiteStorageService : ILocalStorageService
         _tagAssignmentRepo = tagAssignmentRepo;
     }
 
-    // === CRUD Genérico 100% Funcional (agora com IRepository<T>) ===
+    // ==============================================================
+    // CRUD Genérico — Elegante, seguro e 100% funcional
+    // ==============================================================
     public async Task<T?> GetByIdAsync<T>(Guid id) where T : BaseEntity, new()
     {
         return typeof(T) switch
@@ -46,16 +49,18 @@ public class SQLiteStorageService : ILocalStorageService
 
     public async Task<List<T>> GetAllAsync<T>() where T : BaseEntity, new()
     {
-        return typeof(T) switch
+        var result = typeof(T) switch
         {
-            var t when t == typeof(AccountLocal) => (await _accountRepo.GetAllAsync()).Cast<T>().ToList(),
-            var t when t == typeof(TransactionLocal) => (await _transactionRepo.GetAllAsync()).Cast<T>().ToList(),
-            var t when t == typeof(CreditCardLocal) => (await _creditCardRepo.GetAllAsync()).Cast<T>().ToList(),
-            var t when t == typeof(InvoiceLocal) => (await _invoiceRepo.GetAllAsync()).Cast<T>().ToList(),
-            var t when t == typeof(TagLocal) => (await _tagRepo.GetAllAsync()).Cast<T>().ToList(),
-            var t when t == typeof(TagAssignmentLocal) => (await _tagAssignmentRepo.GetAllAsync()).Cast<T>().ToList(),
-            _ => new List<T>()
+            var t when t == typeof(AccountLocal) => (await _accountRepo.GetAllAsync()).Cast<T>(),
+            var t when t == typeof(TransactionLocal) => (await _transactionRepo.GetAllAsync()).Cast<T>(),
+            var t when t == typeof(CreditCardLocal) => (await _creditCardRepo.GetAllAsync()).Cast<T>(),
+            var t when t == typeof(InvoiceLocal) => (await _invoiceRepo.GetAllAsync()).Cast<T>(),
+            var t when t == typeof(TagLocal) => (await _tagRepo.GetAllAsync()).Cast<T>(),
+            var t when t == typeof(TagAssignmentLocal) => (await _tagAssignmentRepo.GetAllAsync()).Cast<T>(),
+            _ => Enumerable.Empty<T>()
         };
+
+        return result.ToList();
     }
 
     public async Task<int> SaveAsync<T>(T entity) where T : BaseEntity, new()
@@ -73,14 +78,14 @@ public class SQLiteStorageService : ILocalStorageService
             InvoiceLocal i => await _invoiceRepo.SaveAsync(i),
             TagLocal tag => await _tagRepo.SaveAsync(tag),
             TagAssignmentLocal ta => await _tagAssignmentRepo.SaveAsync(ta),
-            _ => throw new NotSupportedException($"Tipo {typeof(T)} não suportado")
+            _ => throw new NotSupportedException($"Entidade do tipo {typeof(T).Name} não suportada.")
         };
     }
 
     public async Task<int> DeleteAsync<T>(Guid id) where T : BaseEntity, new()
     {
         var entity = await GetByIdAsync<T>(id);
-        if (entity == null) return 0;
+        if (entity is null) return 0;
 
         return entity switch
         {
@@ -94,17 +99,27 @@ public class SQLiteStorageService : ILocalStorageService
         };
     }
 
-    // === Métodos específicos (mantidos por compatibilidade) ===
+    // ==============================================================
+    // MÉTODOS ESPECÍFICOS — Compatibilidade total com SyncService
+    // ==============================================================
     public Task<List<TransactionLocal>> GetTransactionsAsync() => _transactionRepo.GetAllAsync();
     public Task<int> SaveTransactionAsync(TransactionLocal t) => SaveAsync(t);
+    public Task DeleteTransactionAsync(Guid id) => DeleteAsync<TransactionLocal>(id);
+
     public Task<List<AccountLocal>> GetAccountsAsync() => _accountRepo.GetAllAsync();
     public Task<int> SaveAccountAsync(AccountLocal a) => SaveAsync(a);
+    public Task DeleteAccountAsync(Guid id) => DeleteAsync<AccountLocal>(id);
+
     public Task<List<CreditCardLocal>> GetCreditCardsAsync() => _creditCardRepo.GetAllAsync();
     public Task<CreditCardLocal?> GetCreditCardByIdAsync(Guid id) => _creditCardRepo.GetByIdAsync(id);
+    public Task<int> SaveCreditCardAsync(CreditCardLocal c) => SaveAsync(c);
+    public Task DeleteCreditCardAsync(Guid id) => DeleteAsync<CreditCardLocal>(id);
+
     public Task<List<InvoiceLocal>> GetInvoicesAsync() => _invoiceRepo.GetAllAsync();
     public Task<List<InvoiceLocal>> GetPendingInvoicesAsync() => _invoiceRepo.GetDirtyAsync();
     public Task<InvoiceLocal?> GetCurrentInvoiceAsync() =>
         _invoiceRepo.GetAllAsync().ContinueWith(t => t.Result.OrderByDescending(i => i.CreatedAt).FirstOrDefault());
+
     public Task<int> SaveInvoiceAsync(InvoiceLocal i) => SaveAsync(i);
-    public Task<int> SaveCreditCardAsync(CreditCardLocal c) => SaveAsync(c);
+    public Task DeleteInvoiceAsync(Guid id) => DeleteAsync<InvoiceLocal>(id);
 }

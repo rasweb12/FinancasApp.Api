@@ -1,71 +1,105 @@
-﻿using FinancasApp.Mobile.Models.DTOs;
-using Refit; // Para ApiException
+﻿using System.Net.Http;
+using System.Text.Json;
+using FinancasApp.Mobile.Models.DTOs;
+using FinancasApp.Mobile.Services.Api;
+using Microsoft.Extensions.Logging;
 
 namespace FinancasApp.Mobile.Services.Auth;
 
 public class AuthService : IAuthService
 {
-    private const string Key = "jwt_token";
     private readonly IApiService _api;
+    private readonly ILogger<AuthService> _logger;
 
-    public string Token { get; private set; } = string.Empty;
+    public string? Token { get; private set; }
 
-    public AuthService(IApiService api)
+    public AuthService(IApiService api, ILogger<AuthService> logger)
     {
         _api = api;
+        _logger = logger;
     }
 
-    public async Task<bool> LoginAsync(string email, string password)
+    public async Task<LoginResult> LoginAsync(string email, string password)
     {
         try
         {
-            var loginResponse = await _api.LoginAsync(new LoginRequest
+            var request = new LoginRequest
             {
-                Email = email,
+                Email = email.Trim(),
                 Password = password
-            });
+            };
 
-            Console.WriteLine($"[AUTH] Resposta recebida: Token={(string.IsNullOrEmpty(loginResponse?.Token) ? "NULO" : "OK")}, UserId={loginResponse?.UserId}");
+            var response = await _api.LoginAsync(request);
 
-            if (!string.IsNullOrEmpty(loginResponse?.Token))
+            if (response is { Token: not null })
             {
-                Token = loginResponse.Token;
-                await SecureStorage.Default.SetAsync(Key, Token);
-                Console.WriteLine("[AUTH] Login bem-sucedido! Token salvo.");
-                return true;
+                Token = response.Token;
+                await SaveTokenAsync(Token);
+
+                _logger.LogInformation("Login bem-sucedido para {Email}", email);
+
+                return new LoginResult
+                {
+                    Success = true,
+                    Token = Token
+                };
             }
-            else
+
+            return new LoginResult
             {
-                Console.WriteLine("[AUTH] Token veio vazio ou nulo");
-                return false;
-            }
+                Success = false,
+                Message = "E-mail ou senha inválidos"
+            };
         }
-        catch (ApiException apiEx)
+        catch (HttpRequestException ex)
         {
-            Console.WriteLine($"[AUTH] Erro API: {apiEx.StatusCode} - {apiEx.Content}");
-            return false;
+            _logger.LogError(ex, "Erro de rede ao fazer login");
+            return new LoginResult
+            {
+                Success = false,
+                Message = "Sem conexão com a internet"
+            };
+        }
+        catch (TaskCanceledException ex) when (ex.InnerException is TimeoutException)
+        {
+            _logger.LogError(ex, "Timeout ao fazer login");
+            return new LoginResult
+            {
+                Success = false,
+                Message = "Servidor demorou para responder"
+            };
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[AUTH] Exceção: {ex.Message}\n{ex.StackTrace}");
-            return false;
+            _logger.LogError(ex, "Erro inesperado ao fazer login");
+            return new LoginResult
+            {
+                Success = false,
+                Message = "Erro interno. Tente novamente."
+            };
         }
     }
 
     public async Task SaveTokenAsync(string token)
     {
+        await SecureStorage.Default.SetAsync("jwt_token", token);
         Token = token;
-        await SecureStorage.Default.SetAsync(Key, token);
     }
 
     public async Task LoadTokenAsync()
     {
-        Token = await SecureStorage.Default.GetAsync(Key) ?? string.Empty;
+        Token = await SecureStorage.Default.GetAsync("jwt_token");
+
+        if (!string.IsNullOrEmpty(Token))
+        {
+            _logger.LogInformation("Token carregado do SecureStorage");
+        }
     }
 
     public async Task LogoutAsync()
     {
-        Token = string.Empty;
-        SecureStorage.Default.Remove(Key);
+        SecureStorage.Default.Remove("jwt_token");
+        Token = null;
+        _logger.LogInformation("Logout realizado com sucesso");
     }
 }

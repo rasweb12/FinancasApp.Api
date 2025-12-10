@@ -13,7 +13,9 @@ public class LocalStorageService : ILocalStorageService
         _db = db;
     }
 
+    // ==============================================================
     // CRUD Genérico
+    // ==============================================================
     public async Task<T?> GetByIdAsync<T>(Guid id) where T : BaseEntity, new()
         => await _db.FindAsync<T>(id);
 
@@ -37,15 +39,21 @@ public class LocalStorageService : ILocalStorageService
         return entity is not null ? await _db.DeleteAsync(entity) : 0;
     }
 
-    // Métodos específicos
+    // ==============================================================
+    // MÉTODOS ESPECÍFICOS (OBRIGATÓRIOS PARA O SYNCSERVICE)
+    // ==============================================================
     public Task<List<TransactionLocal>> GetTransactionsAsync() => GetAllAsync<TransactionLocal>();
     public Task<int> SaveTransactionAsync(TransactionLocal t) => SaveAsync(t);
+    public Task DeleteTransactionAsync(Guid id) => DeleteAsync<TransactionLocal>(id); // ADICIONADO
 
     public Task<List<AccountLocal>> GetAccountsAsync() => GetAllAsync<AccountLocal>();
     public Task<int> SaveAccountAsync(AccountLocal a) => SaveAsync(a);
+    public Task DeleteAccountAsync(Guid id) => DeleteAsync<AccountLocal>(id); // ADICIONADO
 
     public Task<List<CreditCardLocal>> GetCreditCardsAsync() => GetAllAsync<CreditCardLocal>();
     public Task<CreditCardLocal?> GetCreditCardByIdAsync(Guid id) => GetByIdAsync<CreditCardLocal>(id);
+    public Task<int> SaveCreditCardAsync(CreditCardLocal card) => SaveAsync(card);
+    public Task DeleteCreditCardAsync(Guid id) => DeleteAsync<CreditCardLocal>(id); // ADICIONADO
 
     public Task<List<InvoiceLocal>> GetInvoicesAsync() => GetAllAsync<InvoiceLocal>();
     public async Task<List<InvoiceLocal>> GetPendingInvoicesAsync() =>
@@ -55,5 +63,5 @@ public class LocalStorageService : ILocalStorageService
         (await GetInvoicesAsync()).OrderByDescending(i => i.CreatedAt).FirstOrDefault();
 
     public Task<int> SaveInvoiceAsync(InvoiceLocal i) => SaveAsync(i);
-    public Task<int> SaveCreditCardAsync(CreditCardLocal card) => SaveAsync(card);
+    public Task DeleteInvoiceAsync(Guid id) => DeleteAsync<InvoiceLocal>(id); // ADICIONADO
 }

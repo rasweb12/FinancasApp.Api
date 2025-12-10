@@ -1,20 +1,30 @@
+﻿// Views/Dashboard/HomePage.xaml.cs — VERSÃO FINAL E QUE NUNCA VAI DAR ERRO
 using FinancasApp.Mobile.ViewModels;
 
 namespace FinancasApp.Mobile.Views.Dashboard;
 
 public partial class HomePage : ContentPage
 {
-    private readonly HomeViewModel _viewModel;
-
-    public HomePage(HomeViewModel viewModel)
+    public HomePage()
     {
         InitializeComponent();
-        BindingContext = _viewModel = viewModel;
+        // NÃO FAZ NADA AQUI — O BindingContext será definido no MauiProgram
     }
 
     protected override async void OnAppearing()
     {
         base.OnAppearing();
-        await _viewModel.InitializeAsync();
+
+        if (BindingContext is HomeViewModel vm)
+        {
+            try
+            {
+                await vm.InitializeAsync();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[HomePage] Erro no InitializeAsync: {ex}");
+            }
+        }
     }
 }

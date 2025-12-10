@@ -1,4 +1,4 @@
-﻿// Controllers/UsersController.cs
+﻿// Controllers/UsersController.cs — VERSÃO FINAL E IMORTAL (.NET 9 – 06/12/2025)
 using FinancasApp.Api.Data;
 using FinancasApp.Api.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -12,7 +12,8 @@ using System.Text;
 namespace FinancasApp.Api.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("auth")]
+[AllowAnonymous] // ← Permite login e register sem JWT
 public class UsersController : ControllerBase
 {
     private readonly AppDbContext _context;
@@ -24,20 +25,26 @@ public class UsersController : ControllerBase
         _config = config;
     }
 
-    // POST api/users/register
+    // POST /auth/register
     [HttpPost("register")]
-    [AllowAnonymous]
     public async Task<IActionResult> Register([FromBody] RegisterDto dto)
     {
+        if (string.IsNullOrWhiteSpace(dto.Email) || string.IsNullOrWhiteSpace(dto.Password))
+            return BadRequest(new { message = "E-mail e senha são obrigatórios" });
+
+        dto.Email = dto.Email.Trim().ToLowerInvariant();
+
         if (await _context.Users.AnyAsync(u => u.Email == dto.Email))
-            return Conflict("E-mail já cadastrado");
+            return Conflict(new { message = "E-mail já cadastrado" });
 
         var user = new User
         {
             Id = Guid.NewGuid(),
             Email = dto.Email,
-            FullName = dto.FullName,
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password) // HASH FORTE E SIMPLES
+            FullName = dto.FullName?.Trim(),
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password),
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
         };
 
         _context.Users.Add(user);
@@ -45,34 +52,36 @@ public class UsersController : ControllerBase
 
         return Ok(new
         {
-            message = "Usuário criado com sucesso",
-            user.Id,
-            user.Email,
-            user.FullName
+            message = "Usuário criado com sucesso!",
+            user = new { user.Id, user.Email, user.FullName }
         });
     }
 
-    // POST api/users/login
+    // POST /auth/login ← É AQUI QUE O MOBILE CHAMA
     [HttpPost("login")]
-    [AllowAnonymous]
     public async Task<IActionResult> Login([FromBody] LoginDto dto)
     {
+        if (string.IsNullOrWhiteSpace(dto.Email) || string.IsNullOrWhiteSpace(dto.Password))
+            return BadRequest(new { message = "E-mail e senha são obrigatórios" });
+
+        var email = dto.Email.Trim().ToLowerInvariant();
         var user = await _context.Users
-            .FirstOrDefaultAsync(u => u.Email == dto.Email);
+            .FirstOrDefaultAsync(u => u.Email == email);
 
         if (user == null || !BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash))
-            return Unauthorized("E-mail ou senha inválidos");
+            return Unauthorized(new { message = "E-mail ou senha inválidos" });
 
         var token = GenerateJwtToken(user);
 
         return Ok(new
         {
             token,
+            expiresIn = 604800, // 7 dias em segundos — compatível com o mobile
             user = new
             {
-                user.Id,
-                user.Email,
-                user.FullName
+                id = user.Id,
+                email = user.Email,
+                fullName = user.FullName
             }
         });
     }
@@ -83,34 +92,37 @@ public class UsersController : ControllerBase
         {
             new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
             new Claim(ClaimTypes.Email, user.Email),
-            new Claim(ClaimTypes.Name, user.FullName ?? "")
+            new Claim(ClaimTypes.Name, user.FullName ?? string.Empty)
         };
 
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(
-            _config["Jwt:Key"] ?? "sua-chave-super-secreta-minimo-32-caracteres-1234567890"));
+        var keyString = _config["Jwt:Key"]
+            ?? "minha-chave-super-secreta-de-32-caracteres-1234567890";
 
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(keyString));
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
         var token = new JwtSecurityToken(
-            issuer: _config["Jwt:Issuer"],
-            audience: _config["Jwt:Audience"],
+            issuer: _config["Jwt:Issuer"] ?? "FinancasAppApi",
+            audience: _config["Jwt:Audience"] ?? "FinancasAppMobile",
             claims: claims,
-            expires: DateTime.Now.AddDays(7),
-            signingCredentials: creds);
+            expires: DateTime.UtcNow.AddDays(7),
+            signingCredentials: creds
+        );
 
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
 }
 
+// DTOs — fora da classe pra não dar conflito
 public class RegisterDto
 {
-    public string Email { get; set; } = "";
-    public string Password { get; set; } = "";
+    public string Email { get; set; } = string.Empty;
+    public string Password { get; set; } = string.Empty;
     public string? FullName { get; set; }
 }
 
 public class LoginDto
 {
-    public string Email { get; set; } = "";
-    public string Password { get; set; } = "";
+    public string Email { get; set; } = string.Empty;
+    public string Password { get; set; } = string.Empty;
 }

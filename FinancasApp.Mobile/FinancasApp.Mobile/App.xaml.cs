@@ -6,46 +6,44 @@ namespace FinancasApp.Mobile;
 
 public partial class App : Application
 {
-    private readonly SyncService _syncService;
+    private readonly ISyncService _syncService;
     private readonly ILogger<App> _logger;
 
-    public App(SyncService syncService, ILogger<App> logger)
+    public App(ISyncService syncService, ILogger<App> logger)
     {
-        _logger = logger;
         _syncService = syncService;
+        _logger = logger;
 
         InitializeComponent();
         MainPage = new AppShell();
 
         RegistrarTratamentoDeExcecoesGlobais();
-
-        // Sync só quando o usuário quiser (NUNCA na inicialização)
-        // _ = InicializarSincronizacaoAsync(); ← APAGUE ESSA LINHA
     }
 
     private void RegistrarTratamentoDeExcecoesGlobais()
     {
         AppDomain.CurrentDomain.UnhandledException += (s, e) =>
-            _logger.LogCritical(e.ExceptionObject as Exception, "EXCEÇÃO NÃO TRATADA");
+            _logger.LogCritical(e.ExceptionObject as Exception, "EXCEÇÃO NÃO TRATADA NO APP");
 
         TaskScheduler.UnobservedTaskException += (s, e) =>
         {
-            _logger.LogCritical(e.Exception, "EXCEÇÃO NÃO OBSERVADA");
+            _logger.LogCritical(e.Exception, "EXCEÇÃO NÃO OBSERVADA EM TASK");
             e.SetObserved();
         };
     }
 
-    // Sync manual — chame isso só com botão ou pull-to-refresh
+    // Método público para ser chamado pelo Dashboard ou Pull-to-Refresh
     public async Task TrySyncAsync()
     {
         try
         {
             await _syncService.SyncAllAsync();
+            _logger.LogInformation("Sincronização manual concluída com sucesso");
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Sync falhou — modo offline ativo");
-            // Não trava o app, só fica offline
+            _logger.LogWarning(ex, "Sincronização falhou — continuando em modo offline");
+            // O app NUNCA trava por causa disso
         }
     }
 }

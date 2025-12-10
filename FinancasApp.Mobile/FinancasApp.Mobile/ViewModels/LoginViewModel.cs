@@ -1,7 +1,6 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using FinancasApp.Mobile.Services.Auth;
-using FinancasApp.Mobile.Services.Navigation;
 using Microsoft.Extensions.Logging;
 
 namespace FinancasApp.Mobile.ViewModels;
@@ -9,7 +8,6 @@ namespace FinancasApp.Mobile.ViewModels;
 public partial class LoginViewModel : ObservableObject
 {
     private readonly IAuthService _auth;
-    private readonly INavigationService _nav;
     private readonly ILogger<LoginViewModel> _logger;
 
     [ObservableProperty] private string email = string.Empty;
@@ -17,15 +15,10 @@ public partial class LoginViewModel : ObservableObject
     [ObservableProperty] private string errorMessage = string.Empty;
     [ObservableProperty] private bool isBusy;
     [ObservableProperty] private bool hasError;
-    [ObservableProperty] private bool isBiometricAvailable = true;
 
-    public LoginViewModel(
-        IAuthService auth,
-        INavigationService nav,
-        ILogger<LoginViewModel> logger)
+    public LoginViewModel(IAuthService auth, ILogger<LoginViewModel> logger)
     {
         _auth = auth;
-        _nav = nav;
         _logger = logger;
     }
 
@@ -38,27 +31,29 @@ public partial class LoginViewModel : ObservableObject
     private async Task LoginAsync()
     {
         IsBusy = true;
-        ErrorMessage = "";
+        ErrorMessage = string.Empty;
         HasError = false;
 
         try
         {
-            var success = await _auth.LoginAsync(Email, Password);
-            if (success)
+            var result = await _auth.LoginAsync(Email.Trim(), Password);
+
+            if (result.Success)
             {
-                await _nav.NavigateToAsync("//home"); // 💡 Navegação via service
+                // Esta é a navegação 100% garantida no .NET MAUI
+                await Shell.Current.GoToAsync("//home");
             }
             else
             {
-                ErrorMessage = "E-mail ou senha inválidos";
+                ErrorMessage = result.Message ?? "E-mail ou senha inválidos";
                 HasError = true;
             }
         }
         catch (Exception ex)
         {
-            ErrorMessage = "Erro de conexão";
+            ErrorMessage = "Erro de conexão. Tente novamente.";
             HasError = true;
-            _logger.LogError(ex, "Login falhou");
+            _logger.LogError(ex, "Falha no login");
         }
         finally
         {
@@ -67,15 +62,9 @@ public partial class LoginViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private async Task BiometricLoginAsync()
+    private async Task GoToRegister()
     {
-        // Implementar biometria aqui depois
-    }
-
-    [RelayCommand]
-    private async Task RegisterAsync()
-    {
-        await _nav.NavigateToAsync("register");
+        await Shell.Current.GoToAsync("register");
     }
 
     partial void OnEmailChanged(string value) => LoginCommand.NotifyCanExecuteChanged();

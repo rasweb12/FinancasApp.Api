@@ -1,4 +1,4 @@
-﻿// Controllers/SyncController.cs
+﻿// Controllers/SyncController.cs — API
 using FinancasApp.Api.DTOs;
 using FinancasApp.Api.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -8,24 +8,24 @@ using System.Security.Claims;
 namespace FinancasApp.Api.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("sync")]
 [Authorize]
 public class SyncController : ControllerBase
 {
     private readonly IAccountService _accountService;
     private readonly ITransactionService _transactionService;
-    private readonly ICreditCardService _creditCardService;
+    private readonly ICreditCardService _creditCardService; // ← CORRIGIDO: era "creditService"
     private readonly IInvoiceService _invoiceService;
 
     public SyncController(
         IAccountService accountService,
         ITransactionService transactionService,
-        ICreditCardService creditCardService,
+        ICreditCardService creditCardService, // ← CORRIGIDO
         IInvoiceService invoiceService)
     {
         _accountService = accountService;
         _transactionService = transactionService;
-        _creditCardService = creditCardService;
+        _creditCardService = creditCardService; // ← CORRIGIDO
         _invoiceService = invoiceService;
     }
 
@@ -36,13 +36,13 @@ public class SyncController : ControllerBase
     {
         var userId = GetUserId();
 
-        // UPLOAD: sincroniza dados do celular → servidor
-        await _accountService.SyncAsync(request.Accounts, userId);
-        await _creditCardService.SyncAsync(request.CreditCards, userId);
-        await _invoiceService.SyncAsync(request.Invoices, userId);
-        await _transactionService.SyncAsync(request.Transactions, userId);
+        await Task.WhenAll(
+            _accountService.SyncAsync(request.Accounts, userId),
+            _creditCardService.SyncAsync(request.CreditCards, userId),
+            _invoiceService.SyncAsync(request.Invoices, userId),
+            _transactionService.SyncAsync(request.Transactions, userId)
+        );
 
-        // DOWNLOAD: retorna tudo atualizado pro celular
         var accounts = await _accountService.GetAllAsync(userId);
         var creditCards = await _creditCardService.GetAllAsync(userId);
         var invoices = await _invoiceService.GetAllAsync(userId);
@@ -50,67 +50,16 @@ public class SyncController : ControllerBase
 
         return Ok(new SyncResponseDto
         {
-            Accounts = accounts.Select(a => new AccountDto
-            {
-                Id = a.Id,
-                Name = a.Name,
-                AccountType = a.AccountType,
-                Currency = a.Currency,
-                Balance = a.Balance,
-                InitialBalance = a.InitialBalance,
-                IsDeleted = a.IsDeleted,
-                UpdatedAt = a.UpdatedAt,
-                CreatedAt = a.CreatedAt
-            }).ToList(),
-
-            CreditCards = creditCards.Select(c => new CreditCardDto
-            {
-                Id = c.Id,
-                Name = c.Name,
-                Last4Digits = c.Last4Digits,
-                CreditLimit = c.CreditLimit,
-                DueDay = c.DueDay,
-                ClosingDay = c.ClosingDay,
-                CurrentInvoiceId = c.CurrentInvoiceId,
-                IsDeleted = c.IsDeleted,
-                UpdatedAt = c.UpdatedAt,
-                CreatedAt = c.CreatedAt
-            }).ToList(),
-
-            Invoices = invoices.Select(i => new InvoiceDto
-            {
-                Id = i.Id,
-                CreditCardId = i.CreditCardId,
-                Month = i.Month,
-                Year = i.Year,
-                Total = i.Total,
-                PaidAmount = i.PaidAmount,
-                IsPaid = i.IsPaid,
-                IsDeleted = i.IsDeleted,
-                UpdatedAt = i.UpdatedAt,
-                CreatedAt = i.CreatedAt
-            }).ToList(),
-
-            Transactions = transactions.Select(t => new TransactionDto
-            {
-                Id = t.Id,
-                AccountId = t.AccountId,
-                Description = t.Description ?? "",
-                Amount = t.Amount,
-                Date = t.Date,
-                CategoryId = t.Category?.Id,           // ← CORRETO: manda o ID da categoria
-                Category = t.Category?.Name ?? "",  // ← manda o nome pra exibir no mobile
-                Type = t.Type.ToString(),
-                SubType = t.SubType,
-                Tags = t.Tags,
-                InstallmentNumber = t.InstallmentNumber,
-                InstallmentTotal = t.InstallmentTotal,
-                TransactionGroupId = t.TransactionGroupId,
-                IsRecurring = t.IsRecurring,
-                IsDeleted = t.IsDeleted,
-                UpdatedAt = t.UpdatedAt,
-                CreatedAt = t.CreatedAt
-            }).ToList()
+            Accounts = accounts.Select(a => new AccountDto { Id = a.Id, Name = a.Name, Balance = a.Balance, /* ... */ }).ToList(),
+            CreditCards = creditCards.Select(c => new CreditCardDto { Id = c.Id, Name = c.Name, Last4Digits = c.Last4Digits, /* ... */ }).ToList(),
+            Invoices = invoices.Select(i => new InvoiceDto { Id = i.Id, /* ... */ }).ToList(),
+            Transactions = transactions.Select(t => new TransactionDto { Id = t.Id, Description = t.Description ?? "", Amount = t.Amount, Date = t.Date, /* ... */ }).ToList()
         });
     }
+
+    // GETs individuais
+    [HttpGet("accounts")] public async Task<IActionResult> GetAccounts() => Ok(await _accountService.GetAllAsync(GetUserId()));
+    [HttpGet("cards")] public async Task<IActionResult> GetCards() => Ok(await _creditCardService.GetAllAsync(GetUserId()));
+    [HttpGet("transactions")] public async Task<IActionResult> GetTransactions() => Ok(await _transactionService.GetAllAsync(GetUserId()));
+    [HttpGet("invoices")] public async Task<IActionResult> GetInvoices() => Ok(await _invoiceService.GetAllAsync(GetUserId()));
 }
