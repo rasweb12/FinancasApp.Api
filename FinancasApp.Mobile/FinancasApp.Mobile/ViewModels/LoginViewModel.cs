@@ -1,45 +1,36 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using FinancasApp.Mobile.Models.DTOs;
-using FinancasApp.Mobile.Services.Api;
 using FinancasApp.Mobile.Services.Auth;
 using Microsoft.Extensions.Logging;
 
 namespace FinancasApp.Mobile.ViewModels;
 
-public partial class RegisterViewModel : ObservableObject
+public partial class LoginViewModel : ObservableObject
 {
-    private readonly IApiService _api;
     private readonly IAuthService _auth;
-    private readonly ILogger<RegisterViewModel> _logger;
+    private readonly ILogger<LoginViewModel> _logger;
 
-    [ObservableProperty] private string fullName = string.Empty;
     [ObservableProperty] private string email = string.Empty;
     [ObservableProperty] private string password = string.Empty;
-    [ObservableProperty] private string confirmPassword = string.Empty;
     [ObservableProperty] private string errorMessage = string.Empty;
     [ObservableProperty] private bool isBusy;
     [ObservableProperty] private bool hasError;
 
-    public RegisterViewModel(
-        IApiService api,
-        IAuthService auth,
-        ILogger<RegisterViewModel> logger)
+    public LoginViewModel(IAuthService auth, ILogger<LoginViewModel> logger)
     {
-        _api = api;
         _auth = auth;
         _logger = logger;
     }
 
-    private bool CanRegister() =>
-        !string.IsNullOrWhiteSpace(FullName) &&
+    // Verificar se o login pode ser feito
+    private bool CanLogin() =>
         !string.IsNullOrWhiteSpace(Email) &&
         !string.IsNullOrWhiteSpace(Password) &&
-        Password == ConfirmPassword &&
         !IsBusy;
 
-    [RelayCommand(CanExecute = nameof(CanRegister))]
-    private async Task RegisterAsync()
+    // Método de login com o [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanLogin))]
+    private async Task LoginAsync()
     {
         try
         {
@@ -47,45 +38,47 @@ public partial class RegisterViewModel : ObservableObject
             ErrorMessage = string.Empty;
             HasError = false;
 
-            var response = await _api.RegisterAsync(new RegisterRequest
-            {
-                FullName = FullName.Trim(),
-                Email = Email.Trim(),
-                Password = Password
-            });
+            _logger.LogInformation("Tentando login para {Email}", Email);
 
-            if (!string.IsNullOrWhiteSpace(response?.Token))
+            var result = await _auth.LoginAsync(Email.Trim(), Password);
+
+            if (result.Success)
             {
-                await _auth.SaveTokenAsync(response.Token);
+                // Navegação correta com Shell (destino absoluto)
                 await Shell.Current.GoToAsync("///home");
             }
             else
             {
-                ErrorMessage = "Erro ao criar conta.";
+                ErrorMessage = result.Message ?? "E-mail ou senha inválidos";
                 HasError = true;
             }
         }
         catch (Exception ex)
         {
-            ErrorMessage = "Erro de conexão.";
+            ErrorMessage = "Erro de conexão. Tente novamente.";
             HasError = true;
-            _logger.LogError(ex, "Registro falhou");
+            _logger.LogError(ex, "Falha no login");
         }
         finally
         {
             IsBusy = false;
-            RegisterCommand.NotifyCanExecuteChanged();
         }
     }
 
+    // Comando para ir para a tela de registro
     [RelayCommand]
-    private async Task BackToLogin()
+    private async Task GoToRegister()
     {
-        await Shell.Current.GoToAsync("///login");
+        await Shell.Current.GoToAsync("///register");
     }
 
-    partial void OnFullNameChanged(string _) => RegisterCommand.NotifyCanExecuteChanged();
-    partial void OnEmailChanged(string _) => RegisterCommand.NotifyCanExecuteChanged();
-    partial void OnPasswordChanged(string _) => RegisterCommand.NotifyCanExecuteChanged();
-    partial void OnConfirmPasswordChanged(string _) => RegisterCommand.NotifyCanExecuteChanged();
+    // Comando de login via biometria (ainda não implementado)
+    [RelayCommand]
+    private async Task BiometricLogin()
+    {
+        await Application.Current!.MainPage!.DisplayAlert(
+            "Biometria",
+            "Biometria ainda não implementada",
+            "OK");
+    }
 }
