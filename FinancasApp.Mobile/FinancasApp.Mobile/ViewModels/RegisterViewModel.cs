@@ -4,6 +4,8 @@ using FinancasApp.Mobile.Models.DTOs;
 using FinancasApp.Mobile.Services.Api;
 using FinancasApp.Mobile.Services.Auth;
 using Microsoft.Extensions.Logging;
+using Refit;
+using System.Net;
 
 namespace FinancasApp.Mobile.ViewModels;
 
@@ -32,11 +34,11 @@ public partial class RegisterViewModel : ObservableObject
     }
 
     private bool CanRegister() =>
+        !IsBusy &&
         !string.IsNullOrWhiteSpace(FullName) &&
         !string.IsNullOrWhiteSpace(Email) &&
         !string.IsNullOrWhiteSpace(Password) &&
-        Password == ConfirmPassword &&
-        !IsBusy;
+        Password == ConfirmPassword;
 
     [RelayCommand(CanExecute = nameof(CanRegister))]
     private async Task RegisterAsync()
@@ -44,32 +46,50 @@ public partial class RegisterViewModel : ObservableObject
         try
         {
             IsBusy = true;
-            ErrorMessage = string.Empty;
             HasError = false;
+            ErrorMessage = string.Empty;
 
-            var response = await _api.RegisterAsync(new RegisterRequest
+            var request = new RegisterRequest
             {
                 FullName = FullName.Trim(),
                 Email = Email.Trim(),
                 Password = Password
-            });
+            };
 
-            if (!string.IsNullOrWhiteSpace(response?.Token))
+            // Realizando o registro
+            var response = await _api.RegisterAsync(request);
+
+            // Verifica se a resposta foi bem-sucedida
+            if (!response.IsSuccessStatusCode || response.Content is null)
             {
-                await _auth.SaveTokenAsync(response.Token);
-                await Shell.Current.GoToAsync("///home");
-            }
-            else
-            {
-                ErrorMessage = "Erro ao criar conta.";
+                ErrorMessage = "Erro ao criar conta. Tente novamente.";
                 HasError = true;
+                return;
             }
+
+            // Salva o token de autenticação
+            await _auth.SaveTokenAsync(response.Content.Token);
+
+            // Navega para a tela inicial
+            await Shell.Current.GoToAsync("//home");
+        }
+        catch (ApiException apiEx)
+        {
+            HasError = true;
+            ErrorMessage = "Erro ao comunicar com o servidor.";
+
+            _logger.LogError(apiEx,
+                "Erro HTTP no registro | StatusCode: {StatusCode} | Content: {Content}",
+                apiEx.StatusCode,
+                apiEx.Content);
         }
         catch (Exception ex)
         {
-            ErrorMessage = "Erro de conexão.";
             HasError = true;
-            _logger.LogError(ex, "Erro no registro");
+            ErrorMessage = "Erro inesperado. Tente novamente.";
+
+            _logger.LogError(ex, "Erro inesperado no registro | Message: {Message} | Inner: {Inner}",
+                ex.Message, ex.InnerException?.Message);
         }
         finally
         {
@@ -80,7 +100,7 @@ public partial class RegisterViewModel : ObservableObject
 
     [RelayCommand]
     private Task BackToLogin() =>
-        Shell.Current.GoToAsync("///login");
+        Shell.Current.GoToAsync("//login");
 
     partial void OnFullNameChanged(string _) => RegisterCommand.NotifyCanExecuteChanged();
     partial void OnEmailChanged(string _) => RegisterCommand.NotifyCanExecuteChanged();

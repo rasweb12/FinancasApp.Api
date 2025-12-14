@@ -1,31 +1,28 @@
 ﻿using FinancasApp.Mobile.Models.DTOs;
 using Refit;
 
-namespace FinancasApp.Mobile.Services.Api;
-
 public interface IApiService
 {
     // AUTH
     [Post("/auth/login")]
-    Task<LoginResponse> LoginAsync([Body] LoginRequest request);
+    Task<ApiResponse<LoginResponse>> LoginAsync([Body] LoginRequest request);
 
     [Post("/auth/register")]
-    Task<RegisterResponse> RegisterAsync([Body] RegisterRequest request);
+    Task<ApiResponse<RegisterResponse>> RegisterAsync([Body] RegisterRequest request);
 
-    // SYNC - DOWNLOAD
+    // SYNC
     [Get("/sync/accounts")]
-    Task<List<AccountDto>> GetAccountsForSyncAsync();
+    Task<ApiResponse<List<AccountDto>>> GetAccountsForSyncAsync();
 
     [Get("/sync/cards")]
-    Task<List<CreditCardDto>> GetCardsForSyncAsync();
+    Task<ApiResponse<List<CreditCardDto>>> GetCardsForSyncAsync();
 
     [Get("/sync/transactions")]
-    Task<List<TransactionDto>> GetTransactionsForSyncAsync();
+    Task<ApiResponse<List<TransactionDto>>> GetTransactionsForSyncAsync();
 
     [Get("/sync/invoices")]
-    Task<List<InvoiceDto>> GetInvoicesForSyncAsync();
+    Task<ApiResponse<List<InvoiceDto>>> GetInvoicesForSyncAsync();
 
-    // SYNC - UPLOAD + DOWNLOAD (POST completo)
     [Post("/sync")]
-    Task<SyncResponseDto> SyncAllAsync([Body] SyncRequestDto request);
+    Task<ApiResponse<SyncResponseDto>> SyncAllAsync([Body] SyncRequestDto request);
 }

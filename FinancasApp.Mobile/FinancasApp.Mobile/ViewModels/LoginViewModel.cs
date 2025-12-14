@@ -1,12 +1,17 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using FinancasApp.Mobile.Models.DTOs;
+using FinancasApp.Mobile.Services.Api;
 using FinancasApp.Mobile.Services.Auth;
 using Microsoft.Extensions.Logging;
+using Refit;
+using System.Net;
 
 namespace FinancasApp.Mobile.ViewModels;
 
 public partial class LoginViewModel : ObservableObject
 {
+    private readonly IApiService _api;
     private readonly IAuthService _auth;
     private readonly ILogger<LoginViewModel> _logger;
 
@@ -16,69 +21,106 @@ public partial class LoginViewModel : ObservableObject
     [ObservableProperty] private bool isBusy;
     [ObservableProperty] private bool hasError;
 
-    public LoginViewModel(IAuthService auth, ILogger<LoginViewModel> logger)
+    public LoginViewModel(
+        IApiService api,
+        IAuthService auth,
+        ILogger<LoginViewModel> logger)
     {
+        _api = api;
         _auth = auth;
         _logger = logger;
     }
 
-    // Verificar se o login pode ser feito
     private bool CanLogin() =>
+        !IsBusy &&
         !string.IsNullOrWhiteSpace(Email) &&
-        !string.IsNullOrWhiteSpace(Password) &&
-        !IsBusy;
+        !string.IsNullOrWhiteSpace(Password);
 
-    // Método de login com o [RelayCommand]
     [RelayCommand(CanExecute = nameof(CanLogin))]
     private async Task LoginAsync()
     {
         try
         {
             IsBusy = true;
-            ErrorMessage = string.Empty;
             HasError = false;
+            ErrorMessage = string.Empty;
 
-            _logger.LogInformation("Tentando login para {Email}", Email);
-
-            var result = await _auth.LoginAsync(Email.Trim(), Password);
-
-            if (result.Success)
+            var request = new LoginRequest
             {
-                // Navegação correta com Shell (destino absoluto)
-                await Shell.Current.GoToAsync("///home");
-            }
-            else
+                Email = Email.Trim(),
+                Password = Password
+            };
+
+            var response = await _api.LoginAsync(request);
+
+            if (!response.IsSuccessStatusCode || response.Content is null)
             {
-                ErrorMessage = result.Message ?? "E-mail ou senha inválidos";
+                ErrorMessage = response.StatusCode switch
+                {
+                    HttpStatusCode.BadRequest => "Dados inválidos.",
+                    HttpStatusCode.Unauthorized => "E-mail ou senha inválidos.",
+                    HttpStatusCode.InternalServerError => "Erro no servidor.",
+                    _ => "Erro ao realizar login."
+                };
+
                 HasError = true;
+                return;
             }
+
+            if (string.IsNullOrWhiteSpace(response.Content.Token))
+            {
+                ErrorMessage = "Token inválido recebido.";
+                HasError = true;
+                return;
+            }
+
+            await _auth.SaveTokenAsync(response.Content.Token);
+
+            // ✅ Rota absoluta correta
+            await Shell.Current.GoToAsync("//home");
+        }
+        catch (ApiException apiEx)
+        {
+            HasError = true;
+            ErrorMessage = "Erro ao comunicar com o servidor.";
+
+            _logger.LogError(apiEx,
+                "Erro HTTP no login | StatusCode: {StatusCode} | Content: {Content}",
+                apiEx.StatusCode,
+                apiEx.Content);
+        }
+        catch (HttpRequestException httpEx)
+        {
+            HasError = true;
+            ErrorMessage = "Falha de conexão com a API.";
+
+            _logger.LogError(httpEx, "Erro de rede no login");
         }
         catch (Exception ex)
         {
-            ErrorMessage = "Erro de conexão. Tente novamente.";
             HasError = true;
-            _logger.LogError(ex, "Falha no login");
+            ErrorMessage = "Erro inesperado.";
+
+            _logger.LogError(ex,
+                "Erro inesperado no login | Message: {Message} | Inner: {Inner}",
+                ex.Message,
+                ex.InnerException?.Message);
         }
         finally
         {
             IsBusy = false;
+            LoginCommand.NotifyCanExecuteChanged();
         }
     }
 
-    // Comando para ir para a tela de registro
     [RelayCommand]
-    private async Task GoToRegister()
-    {
-        await Shell.Current.GoToAsync("///register");
-    }
+    private Task GoToRegister() =>
+        Shell.Current.GoToAsync("//register");
 
-    // Comando de login via biometria (ainda não implementado)
     [RelayCommand]
-    private async Task BiometricLogin()
-    {
-        await Application.Current!.MainPage!.DisplayAlert(
+    private Task BiometricLogin() =>
+        Application.Current!.MainPage!.DisplayAlert(
             "Biometria",
             "Biometria ainda não implementada",
             "OK");
-    }
 }

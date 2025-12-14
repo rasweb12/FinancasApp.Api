@@ -3,14 +3,19 @@
              xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:vm="clr-namespace:FinancasApp.Mobile.ViewModels"
+             x:DataType="vm:LoginViewModel"
              Title="Login"
              BackgroundColor="#F8F9FA">
 
     <ScrollView>
-        <StackLayout Padding="30" Spacing="20" VerticalOptions="Center">
+        <VerticalStackLayout Padding="30"
+                             Spacing="20"
+                             VerticalOptions="Center">
 
             <!-- Logo -->
-            <Image Source="logo.png" HeightRequest="100" HorizontalOptions="Center" />
+            <Image Source="logo.png"
+                   HeightRequest="100"
+                   HorizontalOptions="Center" />
 
             <!-- Título -->
             <Label Text="Bem-vindo ao FinançasApp"
@@ -21,19 +26,26 @@
 
             <!-- Email -->
             <Entry Placeholder="E-mail"
-                   Text="{Binding Email, Mode=TwoWay}"
+                   Text="{Binding Email}"
                    Keyboard="Email"
                    FontSize="16" />
 
             <!-- Senha -->
             <Entry Placeholder="Senha"
-                   Text="{Binding Password, Mode=TwoWay}"
+                   Text="{Binding Password}"
                    IsPassword="True"
                    FontSize="16" />
+
+            <!-- Mensagem de erro -->
+            <Label Text="{Binding ErrorMessage}"
+                   TextColor="Red"
+                   IsVisible="{Binding HasError}"
+                   HorizontalOptions="Center" />
 
             <!-- Botão Login -->
             <Button Text="Entrar"
                     Command="{Binding LoginCommand}"
+                    IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConverter}}"
                     BackgroundColor="#512BD4"
                     TextColor="White"
                     CornerRadius="10"
@@ -49,20 +61,22 @@
             </Label>
 
             <!-- Registrar -->
-            <StackLayout Orientation="Horizontal" HorizontalOptions="Center">
-                <Label Text="Novo aqui? " TextColor="Gray" />
+            <HorizontalStackLayout HorizontalOptions="Center">
+                <Label Text="Novo aqui? "
+                       TextColor="Gray" />
                 <Label Text="Criar conta"
                        TextColor="#512BD4">
                     <Label.GestureRecognizers>
                         <TapGestureRecognizer Command="{Binding GoToRegisterCommand}" />
                     </Label.GestureRecognizers>
                 </Label>
-            </StackLayout>
+            </HorizontalStackLayout>
 
-            <!-- Indicador de carregamento -->
+            <!-- Loading -->
             <ActivityIndicator IsRunning="{Binding IsBusy}"
                                IsVisible="{Binding IsBusy}"
                                Color="#512BD4" />
-        </StackLayout>
+
+        </VerticalStackLayout>
     </ScrollView>
 </ContentPage>

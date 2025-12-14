@@ -1,4 +1,4 @@
-﻿// MauiProgram.cs — VERSÃO FINAL, IMORTAL E SEM ERRO (.NET 9 | Android 15)
+﻿// MauiProgram.cs — VERSÃO FINAL ESTÁVEL (.NET 9 | Android)
 using System.Text.Json;
 using FinancasApp.Mobile.Models.Local;
 using FinancasApp.Mobile.Services.Api;
@@ -47,19 +47,26 @@ public static class MauiProgram
         builder.Services.Configure<JsonSerializerOptions>(options =>
         {
             options.PropertyNameCaseInsensitive = true;
-            options.DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull;
+            options.DefaultIgnoreCondition =
+                System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull;
         });
 
-        // 🌍 DEFINIÇÃO DE AMBIENTE (CORRETA PARA ANDROID)
 #if DEBUG
         var apiUrl = DeviceInfo.Current.Platform == DevicePlatform.Android
-            ? "http://10.0.2.2:7042" // HTTP para Android em DEV
-            : "https://localhost:7042"; // HTTPS em outros dispositivos
+            ? "http://10.0.2.2:7042"
+            : "http://localhost:7042";
 #else
-    var apiUrl = "https://financasapp-api.up.railway.app"; // PROD
+        var apiUrl = "https://financasapp-api.up.railway.app";
 #endif
 
-        // 🔐 REFIT + JWT
+        // 🔐 HttpHandler
+        builder.Services.AddSingleton(new HttpClientHandler
+        {
+            AllowAutoRedirect = true,
+            UseCookies = false
+        });
+
+        // 🔐 Refit + JWT
         builder.Services
             .AddRefitClient<IApiService>(new RefitSettings
             {
@@ -67,50 +74,45 @@ public static class MauiProgram
                 {
                     var path = request.RequestUri?.AbsolutePath ?? "";
 
-                    if (path.Contains("/auth/login", StringComparison.OrdinalIgnoreCase) ||
-                        path.Contains("/auth/register", StringComparison.OrdinalIgnoreCase))
+                    if (path.Contains("/auth/login") ||
+                        path.Contains("/auth/register"))
                         return null;
 
                     var token = await SecureStorage.Default.GetAsync("jwt_token");
-                    return string.IsNullOrWhiteSpace(token) ? null : $"Bearer {token}";
+                    return string.IsNullOrWhiteSpace(token)
+                        ? null
+                        : $"Bearer {token}";
                 }
             })
             .ConfigureHttpClient(c =>
             {
                 c.BaseAddress = new Uri(apiUrl);
-                c.Timeout = TimeSpan.FromMinutes(5);
+                c.Timeout = TimeSpan.FromSeconds(120);
             })
-            .AddStandardResilienceHandler(options =>
-            {
-                options.AttemptTimeout!.Timeout = TimeSpan.FromSeconds(120);
-                options.TotalRequestTimeout!.Timeout = TimeSpan.FromMinutes(6);
-                options.CircuitBreaker!.SamplingDuration = TimeSpan.FromMinutes(10);
-                options.Retry!.MaxRetryAttempts = 3;
-                options.Retry!.BackoffType = Polly.DelayBackoffType.Exponential;
-            });
+            .ConfigurePrimaryHttpMessageHandler(sp =>
+                sp.GetRequiredService<HttpClientHandler>());
 
-        // 💾 SQLite local
+        // 💾 SQLite
         var dbPath = Path.Combine(FileSystem.AppDataDirectory, "financas.db3");
+
         builder.Services.AddSingleton(_ =>
         {
             var conn = new SQLiteAsyncConnection(dbPath);
+
             conn.CreateTableAsync<AccountLocal>().Wait();
             conn.CreateTableAsync<TransactionLocal>().Wait();
             conn.CreateTableAsync<CreditCardLocal>().Wait();
             conn.CreateTableAsync<InvoiceLocal>().Wait();
             conn.CreateTableAsync<TagLocal>().Wait();
             conn.CreateTableAsync<TagAssignmentLocal>().Wait();
+
             return conn;
         });
 
-        // 📦 Repositórios e serviços
-        builder.Services.AddScoped<InvoiceLocalRepository>();
-        builder.Services.AddScoped<CreditCardLocalRepository>();
-        builder.Services.AddScoped<TransactionLocalRepository>();
-        builder.Services.AddScoped<TagLocalRepository>();
-        builder.Services.AddScoped<TagAssignmentLocalRepository>();
-        builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
+        // ✅ REGISTRO CRÍTICO — REPOSITÓRIO GENÉRICO
+        builder.Services.AddSingleton(typeof(IRepository<>), typeof(Repository<>));
 
+        // 📦 Serviços
         builder.Services.AddSingleton<ILocalStorageService, SQLiteStorageService>();
         builder.Services.AddSingleton<IAuthService, AuthService>();
         builder.Services.AddSingleton<ISyncService, SyncService>();

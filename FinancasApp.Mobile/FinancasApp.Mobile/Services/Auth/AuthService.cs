@@ -1,8 +1,9 @@
-﻿using System.Net.Http;
+﻿using System.Net;
 using CommunityToolkit.Mvvm.Messaging;
 using FinancasApp.Mobile.Models.DTOs;
 using FinancasApp.Mobile.Services.Api;
 using Microsoft.Extensions.Logging;
+using Refit;
 
 namespace FinancasApp.Mobile.Services.Auth;
 
@@ -29,24 +30,45 @@ public class AuthService : IAuthService
                 Password = password
             });
 
-            if (!string.IsNullOrWhiteSpace(response?.Token))
+            // 🔴 Falha HTTP
+            if (!response.IsSuccessStatusCode)
             {
-                await SaveTokenAsync(response.Token);
+                _logger.LogWarning(
+                    "Falha no login | StatusCode: {StatusCode} | Content: {Content}",
+                    response.StatusCode,
+                    response.Error?.Content
+                );
 
-                _logger.LogInformation("Login realizado com sucesso: {Email}", email);
-
-                // 🔔 Notifica Shell / App
-                WeakReferenceMessenger.Default.Send(new LoginSuccessMessage());
-
-                return LoginResult.Ok(response.Token);
+                return response.StatusCode switch
+                {
+                    HttpStatusCode.Unauthorized => LoginResult.Error("E-mail ou senha inválidos"),
+                    HttpStatusCode.BadRequest => LoginResult.Error("Dados inválidos"),
+                    _ => LoginResult.Error("Erro ao comunicar com o servidor")
+                };
             }
 
-            return LoginResult.Error("E-mail ou senha inválidos");
+            var token = response.Content?.Token;
+
+            if (string.IsNullOrWhiteSpace(token))
+                return LoginResult.Error("Token inválido retornado pela API");
+
+            await SaveTokenAsync(token);
+
+            _logger.LogInformation("Login realizado com sucesso: {Email}", email);
+
+            // 🔔 Notifica Shell / App
+            WeakReferenceMessenger.Default.Send(new LoginSuccessMessage());
+
+            return LoginResult.Ok(token);
         }
-        catch (HttpRequestException ex)
+        catch (ApiException apiEx)
         {
-            _logger.LogError(ex, "Erro de rede no login");
-            return LoginResult.Error("Sem conexão com a internet");
+            _logger.LogError(apiEx,
+                "Erro HTTP no login | StatusCode: {StatusCode} | Content: {Content}",
+                apiEx.StatusCode,
+                apiEx.Content);
+
+            return LoginResult.Error("Erro ao comunicar com o servidor");
         }
         catch (TaskCanceledException)
         {
