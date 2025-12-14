@@ -1,5 +1,4 @@
-﻿// Program.cs — FinancasApp.Api (.NET 9) — 100% FUNCIONANDO
-using FinancasApp.Api.Data;
+﻿using FinancasApp.Api.Data;
 using FinancasApp.Api.Mappers;
 using FinancasApp.Api.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -40,7 +39,6 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 // ============== JWT ==============
 var key = builder.Configuration["Jwt:Key"]
           ?? "sua-chave-super-secreta-minimo-32-caracteres-1234567890";
-
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
@@ -56,7 +54,6 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ClockSkew = TimeSpan.Zero
         };
     });
-
 builder.Services.AddAuthorization();
 
 // ============== SERVICES + MAPPERS ==============
@@ -69,20 +66,23 @@ builder.Services.AddAutoMapper(typeof(MappingProfile));
 // ============== APP ==============
 var app = builder.Build();
 
+// Habilitar Swagger em DEV
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
-    app.UseSwaggerUI(c =>
-    {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "FinancasApp API v1");
-        c.RoutePrefix = string.Empty;
-    });
-    app.MapGet("/", () => Results.Redirect("/swagger"));
+    app.UseSwaggerUI();
+
+    // Habilitar HTTP em DEV
+    app.UseRouting();
+    app.UseAuthorization();
+}
+else
+{
+    // Redirecionar para HTTPS em PRODUÇÃO
+    app.UseHttpsRedirection();
 }
 
-app.UseHttpsRedirection();
 app.UseAuthentication();
-app.UseAuthorization();
 app.MapControllers();
 
 // MIGRAÇÃO AUTOMÁTICA NA STARTUP (só em dev)

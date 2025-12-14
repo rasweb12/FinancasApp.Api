@@ -1,4 +1,4 @@
-﻿// MauiProgram.cs — VERSÃO FINAL, IMORTAL E SEM ERRO (.NET 9 – 06/12/2025)
+﻿// MauiProgram.cs — VERSÃO FINAL, IMORTAL E SEM ERRO (.NET 9 | Android 15)
 using System.Text.Json;
 using FinancasApp.Mobile.Models.Local;
 using FinancasApp.Mobile.Services.Api;
@@ -28,6 +28,7 @@ public static class MauiProgram
     public static MauiApp CreateMauiApp()
     {
         var builder = MauiApp.CreateBuilder();
+
         builder
             .UseMauiApp<App>()
             .UseSkiaSharp()
@@ -43,61 +44,41 @@ public static class MauiProgram
             .AddDefaultMappers()
             .AddLightTheme());
 
-#if DEBUG
-        builder.Logging.AddDebug();
-        builder.Logging.AddConsole();
-#endif
-
         builder.Services.Configure<JsonSerializerOptions>(options =>
         {
             options.PropertyNameCaseInsensitive = true;
             options.DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull;
         });
 
+        // 🌍 DEFINIÇÃO DE AMBIENTE (CORRETA PARA ANDROID)
+#if DEBUG
         var apiUrl = DeviceInfo.Current.Platform == DevicePlatform.Android
-            ? "https://10.0.2.2:7042"
-            : "https://localhost:7042";
-
-#if !DEBUG
-        apiUrl = "https://sua-api-railway.up.railway.app";
+            ? "http://10.0.2.2:7042" // HTTP para Android em DEV
+            : "https://localhost:7042"; // HTTPS em outros dispositivos
+#else
+    var apiUrl = "https://financasapp-api.up.railway.app"; // PROD
 #endif
 
-        // REFIT + JWT INTELIGENTE (CORRIGIDO O PARÂMETRO!)
+        // 🔐 REFIT + JWT
         builder.Services
             .AddRefitClient<IApiService>(new RefitSettings
             {
-                AuthorizationHeaderValueGetter = async (httpRequestMessage, cancellationToken) =>
+                AuthorizationHeaderValueGetter = async (request, _) =>
                 {
-                    // CORREÇÃO: o parâmetro é HttpRequestMessage, não "msg"
-                    var path = httpRequestMessage.RequestUri?.AbsolutePath ?? "";
+                    var path = request.RequestUri?.AbsolutePath ?? "";
 
                     if (path.Contains("/auth/login", StringComparison.OrdinalIgnoreCase) ||
                         path.Contains("/auth/register", StringComparison.OrdinalIgnoreCase))
-                    {
-                        return null; // ← NÃO ENVIA TOKEN NO LOGIN/REGISTER
-                    }
+                        return null;
 
                     var token = await SecureStorage.Default.GetAsync("jwt_token");
-                    return string.IsNullOrEmpty(token) ? null : $"Bearer {token}";
+                    return string.IsNullOrWhiteSpace(token) ? null : $"Bearer {token}";
                 }
             })
             .ConfigureHttpClient(c =>
             {
                 c.BaseAddress = new Uri(apiUrl);
                 c.Timeout = TimeSpan.FromMinutes(5);
-            })
-            .ConfigurePrimaryHttpMessageHandler(() =>
-            {
-                var handler = new HttpClientHandler();
-                if (handler.SupportsAutomaticDecompression)
-                    handler.AutomaticDecompression = System.Net.DecompressionMethods.All;
-
-                if (apiUrl.Contains("10.0.2.2") || apiUrl.Contains("localhost"))
-                {
-                    handler.ServerCertificateCustomValidationCallback =
-                        (message, cert, chain, errors) => true;
-                }
-                return handler;
             })
             .AddStandardResilienceHandler(options =>
             {
@@ -108,9 +89,9 @@ public static class MauiProgram
                 options.Retry!.BackoffType = Polly.DelayBackoffType.Exponential;
             });
 
-        // Banco SQLite local
+        // 💾 SQLite local
         var dbPath = Path.Combine(FileSystem.AppDataDirectory, "financas.db3");
-        builder.Services.AddSingleton<SQLiteAsyncConnection>(sp =>
+        builder.Services.AddSingleton(_ =>
         {
             var conn = new SQLiteAsyncConnection(dbPath);
             conn.CreateTableAsync<AccountLocal>().Wait();
@@ -122,7 +103,7 @@ public static class MauiProgram
             return conn;
         });
 
-        // Repositórios e Serviços
+        // 📦 Repositórios e serviços
         builder.Services.AddScoped<InvoiceLocalRepository>();
         builder.Services.AddScoped<CreditCardLocalRepository>();
         builder.Services.AddScoped<TransactionLocalRepository>();
@@ -134,7 +115,7 @@ public static class MauiProgram
         builder.Services.AddSingleton<IAuthService, AuthService>();
         builder.Services.AddSingleton<ISyncService, SyncService>();
 
-        // ViewModels
+        // 🧠 ViewModels
         builder.Services.AddTransient<LoginViewModel>();
         builder.Services.AddTransient<RegisterViewModel>();
         builder.Services.AddTransient<HomeViewModel>();
@@ -144,20 +125,18 @@ public static class MauiProgram
         builder.Services.AddTransient<InvoiceDetailViewModel>();
         builder.Services.AddTransient<ReportsViewModel>();
 
-        // Pages
+        // 📱 Pages
         builder.Services.AddTransient<LoginPage>();
         builder.Services.AddTransient<RegisterPage>();
-        builder.Services.AddTransient<HomePage>(provider =>
-        {
-            var page = new HomePage();
-            page.BindingContext = provider.GetRequiredService<HomeViewModel>();
-            return page;
-        });
+        builder.Services.AddTransient<HomePage>();
         builder.Services.AddTransient<AccountsPage>();
         builder.Services.AddTransient<NewTransactionPage>();
         builder.Services.AddTransient<CreditCardsPage>();
         builder.Services.AddTransient<InvoiceDetailPage>();
         builder.Services.AddTransient<ReportsPage>();
+
+        // 🧭 Shell
+        builder.Services.AddSingleton<AppShellViewModel>();
         builder.Services.AddSingleton<AppShell>();
 
         return builder.Build();

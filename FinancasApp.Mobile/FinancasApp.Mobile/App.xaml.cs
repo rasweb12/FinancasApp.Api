@@ -1,4 +1,4 @@
-﻿// App.xaml.cs — VERSÃO FINAL, LIMPA E QUE NUNCA TRAVA
+﻿// App.xaml.cs — VERSÃO FINAL, SEM NENHUM ERRO DE DI
 using FinancasApp.Mobile.Services.Sync;
 using Microsoft.Extensions.Logging;
 
@@ -8,42 +8,61 @@ public partial class App : Application
 {
     private readonly ISyncService _syncService;
     private readonly ILogger<App> _logger;
+    private readonly AppShell _appShell;
 
-    public App(ISyncService syncService, ILogger<App> logger)
+    public App(ISyncService syncService, ILogger<App> logger, AppShell appShell)
     {
         _syncService = syncService;
         _logger = logger;
+        _appShell = appShell;
 
         InitializeComponent();
-        MainPage = new AppShell();
+        MainPage = _appShell; // ← O DI já injetou o ViewModel no AppShell
 
-        RegistrarTratamentoDeExcecoesGlobais();
+        HandleGlobalExceptions();
     }
 
-    private void RegistrarTratamentoDeExcecoesGlobais()
+    protected override void OnStart()
     {
-        AppDomain.CurrentDomain.UnhandledException += (s, e) =>
-            _logger.LogCritical(e.ExceptionObject as Exception, "EXCEÇÃO NÃO TRATADA NO APP");
-
-        TaskScheduler.UnobservedTaskException += (s, e) =>
-        {
-            _logger.LogCritical(e.Exception, "EXCEÇÃO NÃO OBSERVADA EM TASK");
-            e.SetObserved();
-        };
+        base.OnStart();
+        _ = TrySyncAsync();
     }
 
-    // Método público para ser chamado pelo Dashboard ou Pull-to-Refresh
-    public async Task TrySyncAsync()
+    private async Task TrySyncAsync()
     {
         try
         {
             await _syncService.SyncAllAsync();
-            _logger.LogInformation("Sincronização manual concluída com sucesso");
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Sincronização falhou — continuando em modo offline");
-            // O app NUNCA trava por causa disso
+            _logger.LogWarning(ex, "Sincronização inicial falhou — continuando offline");
         }
+    }
+
+    private void HandleGlobalExceptions()
+    {
+        AppDomain.CurrentDomain.UnhandledException += async (sender, args) =>
+        {
+            var ex = args.ExceptionObject as Exception;
+            _logger.LogCritical(ex, "Exceção global não tratada");
+
+            await MainThread.InvokeOnMainThreadAsync(async () =>
+            {
+                if (Current?.MainPage != null)
+                {
+                    await Current.MainPage.DisplayAlert(
+                        "Erro Crítico",
+                        "Ocorreu um erro inesperado.",
+                        "OK");
+                }
+            });
+        };
+
+        TaskScheduler.UnobservedTaskException += (sender, args) =>
+        {
+            _logger.LogCritical(args.Exception, "Exceção não observada em task");
+            args.SetObserved();
+        };
     }
 }

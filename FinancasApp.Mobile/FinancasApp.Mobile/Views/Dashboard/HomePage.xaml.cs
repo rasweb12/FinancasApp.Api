@@ -1,4 +1,4 @@
-﻿// Views/Dashboard/HomePage.xaml.cs — VERSÃO FINAL E QUE NUNCA VAI DAR ERRO
+﻿// Views/Dashboard/HomePage.xaml.cs — COM LAZY LOADING (Melhoria Aplicada)
 using FinancasApp.Mobile.ViewModels;
 
 namespace FinancasApp.Mobile.Views.Dashboard;
@@ -8,7 +8,6 @@ public partial class HomePage : ContentPage
     public HomePage()
     {
         InitializeComponent();
-        // NÃO FAZ NADA AQUI — O BindingContext será definido no MauiProgram
     }
 
     protected override async void OnAppearing()
@@ -19,11 +18,12 @@ public partial class HomePage : ContentPage
         {
             try
             {
+                // Lazy Loading: Carrega dados e gráfico após a página aparecer
                 await vm.InitializeAsync();
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[HomePage] Erro no InitializeAsync: {ex}");
+                System.Diagnostics.Debug.WriteLine($"[HomePage] Erro no InitializeAsync: {ex.Message}");
             }
         }
     }

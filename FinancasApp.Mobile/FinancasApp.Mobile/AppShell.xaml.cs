@@ -1,27 +1,39 @@
-﻿using FinancasApp.Mobile.Views.CreditCards;
-using FinancasApp.Mobile.Views.Dashboard;
-using FinancasApp.Mobile.Views.Reports;
+﻿using FinancasApp.Mobile.ViewModels;
+using FinancasApp.Mobile.Views.CreditCards;
 using FinancasApp.Mobile.Views.Transactions;
 
 namespace FinancasApp.Mobile;
 
 public partial class AppShell : Shell
 {
-    public AppShell()
+    private readonly AppShellViewModel _viewModel;
+
+    public AppShell(AppShellViewModel viewModel)
     {
         InitializeComponent();
+        _viewModel = viewModel;
+        BindingContext = _viewModel;
 
-        // 🔗 Rotas internas (não aparecem no menu)
+        // 🔗 Rotas internas
         Routing.RegisterRoute("newtransaction", typeof(NewTransactionPage));
         Routing.RegisterRoute("cardinvoice", typeof(InvoiceDetailPage));
-        Routing.RegisterRoute(nameof(NewTransactionPage), typeof(NewTransactionPage));
-
     }
 
-    // 🔗 Exemplo: navegar com parâmetro
-    public static async Task NavigateToInvoiceAsync(Guid cardId)
+    protected override async void OnAppearing()
     {
-        await Shell.Current.GoToAsync("cardinvoice", new Dictionary<string, object>
+        base.OnAppearing();
+
+        // 🔐 Decide tela inicial
+        if (_viewModel.IsAuthenticated)
+            await GoToAsync("//home");
+        else
+            await GoToAsync("//login");
+    }
+
+    // ✅ MÉTODO QUE ESTAVA FALTANDO
+    public static Task NavigateToInvoiceAsync(Guid cardId)
+    {
+        return Shell.Current.GoToAsync("cardinvoice", new Dictionary<string, object>
         {
             ["cardId"] = cardId
         });

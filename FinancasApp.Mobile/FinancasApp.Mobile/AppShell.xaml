@@ -1,5 +1,4 @@
 <?xml version="1.0" encoding="utf-8" ?>
-<!-- ESSA LINHA É OBRIGATÓRIA NOS ARQUIVOS MAUI XAML -->
 <Shell
     x:Class="FinancasApp.Mobile.AppShell"
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
@@ -11,7 +10,7 @@
     xmlns:reports="clr-namespace:FinancasApp.Mobile.Views.Reports"
     FlyoutBehavior="Flyout">
 
-    <!-- LOGIN E REGISTER (não aparecem no menu) -->
+    <!-- 🔐 LOGIN -->
     <ShellContent
         Route="login"
         ContentTemplate="{DataTemplate auth:LoginPage}"
@@ -22,24 +21,38 @@
         ContentTemplate="{DataTemplate auth:RegisterPage}"
         FlyoutItemIsVisible="False" />
 
-    <!-- DASHBOARD — PÁGINA INICIAL -->
-    <ShellContent
+    <!-- 🏠 HOME -->
+    <FlyoutItem
         Route="home"
         Title="Início"
         Icon="home.png"
-        ContentTemplate="{DataTemplate dashboard:HomePage}" />
-
-    <!-- MENU LATERAL -->
-    <FlyoutItem Title="Contas" Icon="account_balance.png">
-        <ShellContent Route="accounts" ContentTemplate="{DataTemplate accounts:AccountsPage}" />
+        FlyoutItemIsVisible="{Binding IsAuthenticated}">
+        <ShellContent ContentTemplate="{DataTemplate dashboard:HomePage}" />
     </FlyoutItem>
 
-    <FlyoutItem Title="Cartões" Icon="credit_card.png">
-        <ShellContent Route="creditcards" ContentTemplate="{DataTemplate creditcards:CreditCardsPage}" />
+    <!-- 📂 MENU -->
+    <FlyoutItem
+        Title="Contas"
+        Icon="account_balance.png"
+        FlyoutItemIsVisible="{Binding IsAuthenticated}">
+        <ShellContent Route="accounts"
+                      ContentTemplate="{DataTemplate accounts:AccountsPage}" />
     </FlyoutItem>
 
-    <FlyoutItem Title="Relatórios" Icon="bar_chart.png">
-        <ShellContent Route="reports" ContentTemplate="{DataTemplate reports:ReportsPage}" />
+    <FlyoutItem
+        Title="Cartões"
+        Icon="credit_card.png"
+        FlyoutItemIsVisible="{Binding IsAuthenticated}">
+        <ShellContent Route="creditcards"
+                      ContentTemplate="{DataTemplate creditcards:CreditCardsPage}" />
+    </FlyoutItem>
+
+    <FlyoutItem
+        Title="Relatórios"
+        Icon="bar_chart.png"
+        FlyoutItemIsVisible="{Binding IsAuthenticated}">
+        <ShellContent Route="reports"
+                      ContentTemplate="{DataTemplate reports:ReportsPage}" />
     </FlyoutItem>
 
 </Shell>

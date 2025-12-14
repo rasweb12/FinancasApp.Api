@@ -21,13 +21,13 @@
 
             <!-- Email -->
             <Entry Placeholder="E-mail"
-                   Text="{Binding Email}"
+                   Text="{Binding Email, Mode=TwoWay}"
                    Keyboard="Email"
                    FontSize="16" />
 
             <!-- Senha -->
             <Entry Placeholder="Senha"
-                   Text="{Binding Password}"
+                   Text="{Binding Password, Mode=TwoWay}"
                    IsPassword="True"
                    FontSize="16" />
 
@@ -54,7 +54,7 @@
                 <Label Text="Criar conta"
                        TextColor="#512BD4">
                     <Label.GestureRecognizers>
-                        <TapGestureRecognizer Command="{Binding RegisterCommand}" />
+                        <TapGestureRecognizer Command="{Binding GoToRegisterCommand}" />
                     </Label.GestureRecognizers>
                 </Label>
             </StackLayout>

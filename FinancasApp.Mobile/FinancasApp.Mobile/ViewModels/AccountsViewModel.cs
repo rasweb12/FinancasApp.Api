@@ -1,4 +1,4 @@
-﻿// ViewModels/AccountsViewModel.cs
+﻿// ViewModels/AccountsViewModel.cs — VERSÃO FINAL E CORRETA
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using FinancasApp.Mobile.Models.Local;
@@ -12,7 +12,7 @@ namespace FinancasApp.Mobile.ViewModels;
 public partial class AccountsViewModel : ObservableObject
 {
     private readonly ILocalStorageService _local;
-    private readonly SyncService _sync;
+    private readonly ISyncService _sync; // ← CORRETO: usa a interface
     private readonly ILogger<AccountsViewModel> _logger;
 
     [ObservableProperty] private ObservableCollection<AccountLocal> accounts = new();
@@ -21,7 +21,7 @@ public partial class AccountsViewModel : ObservableObject
 
     public AccountsViewModel(
         ILocalStorageService local,
-        SyncService sync,
+        ISyncService sync, // ← CORRIGIDO AQUI
         ILogger<AccountsViewModel> logger)
     {
         _local = local;
@@ -29,18 +29,13 @@ public partial class AccountsViewModel : ObservableObject
         _logger = logger;
     }
 
-    // -----------------------------------------------------
-    // LOAD ACCOUNTS
-    // -----------------------------------------------------
     [RelayCommand]
     private async Task LoadAccountsAsync()
     {
         IsBusy = true;
         try
         {
-            // CORRIGIDO: Agora usa o método correto da interface
-            var list = await _local.GetAccountsAsync();
-
+            var list = await _local.GetAccountsAsync() ?? new List<AccountLocal>();
             Accounts.Clear();
             foreach (var a in list)
                 Accounts.Add(a);
@@ -58,21 +53,15 @@ public partial class AccountsViewModel : ObservableObject
         }
     }
 
-    // -----------------------------------------------------
-    // ADD ACCOUNT
-    // -----------------------------------------------------
     [RelayCommand]
     private async Task AddAccountAsync()
     {
         try
         {
-            var name = await Shell.Current.DisplayPromptAsync(
-                "Nova Conta", "Nome da conta:", placeholder: "Ex: Nubank, Caixa...");
-
+            var name = await Shell.Current.DisplayPromptAsync("Nova Conta", "Nome da conta:", placeholder: "Ex: Nubank");
             if (string.IsNullOrWhiteSpace(name)) return;
 
-            var typeString = await Shell.Current.DisplayActionSheet(
-                "Tipo de conta", "Cancelar", null,
+            var typeString = await Shell.Current.DisplayActionSheet("Tipo de conta", "Cancelar", null,
                 "Corrente", "Poupança", "Carteira", "Investimento", "Crédito");
 
             if (typeString == "Cancelar" || typeString is null) return;
@@ -92,10 +81,7 @@ public partial class AccountsViewModel : ObservableObject
                 Name = name.Trim(),
                 AccountType = accountType,
                 Balance = 0,
-                InitialBalance = 0,
-                LastBalanceUpdate = DateTime.UtcNow,
                 IsDirty = true,
-                IsDeleted = false,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
@@ -111,9 +97,6 @@ public partial class AccountsViewModel : ObservableObject
         }
     }
 
-    // -----------------------------------------------------
-    // DELETE ACCOUNT (soft delete)
-    // -----------------------------------------------------
     [RelayCommand]
     private async Task DeleteAccountAsync(AccountLocal account)
     {

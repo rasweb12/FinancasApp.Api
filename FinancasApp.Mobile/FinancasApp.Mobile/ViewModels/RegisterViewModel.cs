@@ -3,7 +3,6 @@ using CommunityToolkit.Mvvm.Input;
 using FinancasApp.Mobile.Models.DTOs;
 using FinancasApp.Mobile.Services.Api;
 using FinancasApp.Mobile.Services.Auth;
-using FinancasApp.Mobile.Services.Navigation;
 using Microsoft.Extensions.Logging;
 
 namespace FinancasApp.Mobile.ViewModels;
@@ -12,7 +11,6 @@ public partial class RegisterViewModel : ObservableObject
 {
     private readonly IApiService _api;
     private readonly IAuthService _auth;
-    private readonly INavigationService _nav;
     private readonly ILogger<RegisterViewModel> _logger;
 
     [ObservableProperty] private string fullName = string.Empty;
@@ -26,12 +24,10 @@ public partial class RegisterViewModel : ObservableObject
     public RegisterViewModel(
         IApiService api,
         IAuthService auth,
-        INavigationService nav,
         ILogger<RegisterViewModel> logger)
     {
         _api = api;
         _auth = auth;
-        _nav = nav;
         _logger = logger;
     }
 
@@ -45,50 +41,49 @@ public partial class RegisterViewModel : ObservableObject
     [RelayCommand(CanExecute = nameof(CanRegister))]
     private async Task RegisterAsync()
     {
-        IsBusy = true;
-        ErrorMessage = "";
-        HasError = false;
-
         try
         {
+            IsBusy = true;
+            ErrorMessage = string.Empty;
+            HasError = false;
+
             var response = await _api.RegisterAsync(new RegisterRequest
             {
-                FullName = FullName,
-                Email = Email,
+                FullName = FullName.Trim(),
+                Email = Email.Trim(),
                 Password = Password
             });
 
-            if (!string.IsNullOrEmpty(response?.Token))
+            if (!string.IsNullOrWhiteSpace(response?.Token))
             {
                 await _auth.SaveTokenAsync(response.Token);
-                await _nav.NavigateToAsync("//home");
+                await Shell.Current.GoToAsync("///home");
             }
             else
             {
-                ErrorMessage = "Erro ao criar conta. Tente novamente.";
+                ErrorMessage = "Erro ao criar conta.";
                 HasError = true;
             }
         }
         catch (Exception ex)
         {
-            ErrorMessage = "Erro de conexão ou servidor indisponível.";
+            ErrorMessage = "Erro de conexão.";
             HasError = true;
-            _logger.LogError(ex, "Registro falhou");
+            _logger.LogError(ex, "Erro no registro");
         }
         finally
         {
             IsBusy = false;
+            RegisterCommand.NotifyCanExecuteChanged();
         }
     }
 
     [RelayCommand]
-    private async Task BackToLogin()
-    {
-        await _nav.GoBackAsync();
-    }
+    private Task BackToLogin() =>
+        Shell.Current.GoToAsync("///login");
 
-    partial void OnFullNameChanged(string value) => RegisterCommand.NotifyCanExecuteChanged();
-    partial void OnEmailChanged(string value) => RegisterCommand.NotifyCanExecuteChanged();
-    partial void OnPasswordChanged(string value) => RegisterCommand.NotifyCanExecuteChanged();
-    partial void OnConfirmPasswordChanged(string value) => RegisterCommand.NotifyCanExecuteChanged();
+    partial void OnFullNameChanged(string _) => RegisterCommand.NotifyCanExecuteChanged();
+    partial void OnEmailChanged(string _) => RegisterCommand.NotifyCanExecuteChanged();
+    partial void OnPasswordChanged(string _) => RegisterCommand.NotifyCanExecuteChanged();
+    partial void OnConfirmPasswordChanged(string _) => RegisterCommand.NotifyCanExecuteChanged();
 }

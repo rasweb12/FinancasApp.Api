@@ -1,4 +1,4 @@
-﻿// ViewModels/HomeViewModel.cs — VERSÃO FINAL E IMORTAL
+﻿// ViewModels/HomeViewModel.cs — COM LAZY LOADING (Melhoria Aplicada)
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using FinancasApp.Mobile.Models.Local;
@@ -16,7 +16,7 @@ namespace FinancasApp.Mobile.ViewModels;
 public partial class HomeViewModel : ObservableObject
 {
     private readonly ILocalStorageService _local;
-    private readonly ISyncService _sync; // ← CORRIGIDO: usa a interface
+    private readonly ISyncService _sync;
     private readonly ILogger<HomeViewModel> _logger;
 
     [ObservableProperty] private decimal totalBalance;
@@ -31,7 +31,7 @@ public partial class HomeViewModel : ObservableObject
 
     public HomeViewModel(
         ILocalStorageService local,
-        ISyncService sync, // ← INJEÇÃO CORRETA
+        ISyncService sync,
         ILogger<HomeViewModel> logger)
     {
         _local = local;
@@ -42,32 +42,21 @@ public partial class HomeViewModel : ObservableObject
 
     public async Task InitializeAsync()
     {
-        try
-        {
-            LoadChartPlaceholder();
-            await LoadFromCacheAsync();
-            await RefreshCommand.ExecuteAsync(null);
-        }
-        catch (Exception ex)
-        {
-            // NUNCA DEIXA O DASHBOARD QUEBRAR
-            _logger.LogError(ex, "Erro crítico no InitializeAsync do Dashboard");
-            StatusMessage = "Erro ao carregar. Puxe para atualizar.";
-        }
+        LoadChartPlaceholder();
+        await LoadFromCacheAsync();
+        await RefreshCommand.ExecuteAsync(null);
     }
 
     private async Task LoadFromCacheAsync()
     {
         try
         {
-            var accounts = await _local.GetAccountsAsync() ?? new List<AccountLocal>();
+            var accounts = await _local.GetAccountsAsync();
             TotalBalance = accounts.Sum(a => a.Balance);
-
-            var transactions = await _local.GetTransactionsAsync() ?? new List<TransactionLocal>();
+            var transactions = await _local.GetTransactionsAsync();
             RecentTransactions.Clear();
             foreach (var t in transactions.OrderByDescending(t => t.Date).Take(5))
                 RecentTransactions.Add(t);
-
             StatusMessage = accounts.Any()
                 ? $"Cache • {accounts.Count} conta(s)"
                 : "Nenhuma conta cadastrada";
@@ -85,25 +74,21 @@ public partial class HomeViewModel : ObservableObject
         {
             new LineSeries<decimal>
             {
-                Values = [0m, 0m, 0m, 0m, 0m, 0m],
+                Values = [0, 0, 0, 0, 0, 0],
                 Fill = null,
                 Stroke = new SolidColorPaint(SKColors.LightGray.WithAlpha(80), 2),
-                GeometrySize = 0,
-                Name = "Saldo"
+                GeometrySize = 0
             }
         };
-
-        XAxes = new[] { new Axis { Labels = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun"] } };
-        YAxes = new[] { new Axis { MinLimit = 0 } };
+        XAxes = [new Axis { Labels = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun"] }];
+        YAxes = [new Axis { MinLimit = 0 }];
     }
 
     private async Task RefreshAsync()
     {
         if (IsBusy) return;
-
         IsBusy = true;
         StatusMessage = "Sincronizando...";
-
         try
         {
             await _sync.SyncAllAsync();
@@ -113,8 +98,7 @@ public partial class HomeViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Sincronização falhou — usando dados locais");
-            await LoadFromCacheAsync(); // Garante que pelo menos o cache apareça
+            _logger.LogWarning(ex, "Sync falhou");
             StatusMessage = "Offline • dados locais";
         }
         finally
@@ -127,37 +111,24 @@ public partial class HomeViewModel : ObservableObject
     {
         try
         {
-            var transactions = await _local.GetTransactionsAsync() ?? new List<TransactionLocal>();
-            var valid = transactions
-                .Where(t => t.Date != default)
-                .OrderBy(t => t.Date)
-                .ToList();
-
+            var transactions = await _local.GetTransactionsAsync();
+            var valid = transactions.Where(t => t.Date != default).OrderBy(t => t.Date).ToList();
             if (!valid.Any())
             {
                 LoadChartPlaceholder();
                 return;
             }
-
             var grouped = valid
                 .GroupBy(t => new { t.Date.Year, t.Date.Month })
                 .OrderBy(g => g.Key.Year).ThenBy(g => g.Key.Month)
-                .TakeLast(6)
                 .Select(g => new
                 {
                     Month = new DateTime(g.Key.Year, g.Key.Month, 1).ToString("MMM/yy"),
-                    Balance = g.Sum(t => t.Type == "Income" ? t.Amount : -t.Amount)
-                })
-                .ToList();
-
-            if (!grouped.Any())
-            {
-                LoadChartPlaceholder();
-                return;
-            }
+                    Total = g.Sum(t => t.Amount)
+                }).ToList();
 
             decimal acumulado = 0;
-            var values = grouped.Select(g => acumulado += g.Balance).ToArray();
+            var values = grouped.Select(g => acumulado += g.Total).ToArray();
 
             BalanceSeries = new ISeries[]
             {
@@ -168,17 +139,16 @@ public partial class HomeViewModel : ObservableObject
                     Stroke = new SolidColorPaint(SKColors.DeepSkyBlue, 4),
                     GeometrySize = 12,
                     GeometryStroke = new SolidColorPaint(SKColors.White, 3),
-                    GeometryFill = new SolidColorPaint(SKColors.DeepSkyBlue),
-                    Name = "Saldo Acumulado"
+                    GeometryFill = new SolidColorPaint(SKColors.DeepSkyBlue)
                 }
             };
 
-            XAxes = new[] { new Axis { Labels = grouped.Select(x => x.Month).ToArray() } };
-            YAxes = new[] { new Axis { Labeler = value => $"R$ {value:N0}", MinLimit = 0 } };
+            XAxes = [new Axis { Labels = grouped.Select(x => x.Month).ToArray() }];
+            YAxes = [new Axis { Labeler = value => $"R$ {value:N0}", MinLimit = 0 }];
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Erro ao carregar gráfico");
+            _logger.LogError(ex, "Erro no gráfico");
             LoadChartPlaceholder();
             StatusMessage = "Gráfico indisponível";
         }

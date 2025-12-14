@@ -1,5 +1,5 @@
 ﻿using System.Net.Http;
-using System.Text.Json;
+using CommunityToolkit.Mvvm.Messaging;
 using FinancasApp.Mobile.Models.DTOs;
 using FinancasApp.Mobile.Services.Api;
 using Microsoft.Extensions.Logging;
@@ -23,83 +23,67 @@ public class AuthService : IAuthService
     {
         try
         {
-            var request = new LoginRequest
+            var response = await _api.LoginAsync(new LoginRequest
             {
                 Email = email.Trim(),
                 Password = password
-            };
+            });
 
-            var response = await _api.LoginAsync(request);
-
-            if (response is { Token: not null })
+            if (!string.IsNullOrWhiteSpace(response?.Token))
             {
-                Token = response.Token;
-                await SaveTokenAsync(Token);
+                await SaveTokenAsync(response.Token);
 
-                _logger.LogInformation("Login bem-sucedido para {Email}", email);
+                _logger.LogInformation("Login realizado com sucesso: {Email}", email);
 
-                return new LoginResult
-                {
-                    Success = true,
-                    Token = Token
-                };
+                // 🔔 Notifica Shell / App
+                WeakReferenceMessenger.Default.Send(new LoginSuccessMessage());
+
+                return LoginResult.Ok(response.Token);
             }
 
-            return new LoginResult
-            {
-                Success = false,
-                Message = "E-mail ou senha inválidos"
-            };
+            return LoginResult.Error("E-mail ou senha inválidos");
         }
         catch (HttpRequestException ex)
         {
-            _logger.LogError(ex, "Erro de rede ao fazer login");
-            return new LoginResult
-            {
-                Success = false,
-                Message = "Sem conexão com a internet"
-            };
+            _logger.LogError(ex, "Erro de rede no login");
+            return LoginResult.Error("Sem conexão com a internet");
         }
-        catch (TaskCanceledException ex) when (ex.InnerException is TimeoutException)
+        catch (TaskCanceledException)
         {
-            _logger.LogError(ex, "Timeout ao fazer login");
-            return new LoginResult
-            {
-                Success = false,
-                Message = "Servidor demorou para responder"
-            };
+            _logger.LogError("Timeout no login");
+            return LoginResult.Error("Servidor demorou para responder");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Erro inesperado ao fazer login");
-            return new LoginResult
-            {
-                Success = false,
-                Message = "Erro interno. Tente novamente."
-            };
+            _logger.LogError(ex, "Erro inesperado no login");
+            return LoginResult.Error("Erro interno. Tente novamente.");
         }
     }
 
     public async Task SaveTokenAsync(string token)
     {
-        await SecureStorage.Default.SetAsync("jwt_token", token);
         Token = token;
+        await SecureStorage.Default.SetAsync("jwt_token", token);
     }
 
     public async Task LoadTokenAsync()
     {
         Token = await SecureStorage.Default.GetAsync("jwt_token");
-
-        if (!string.IsNullOrEmpty(Token))
-        {
-            _logger.LogInformation("Token carregado do SecureStorage");
-        }
     }
+
+    public Task<string?> GetTokenAsync()
+        => Task.FromResult(Token);
 
     public async Task LogoutAsync()
     {
         SecureStorage.Default.Remove("jwt_token");
         Token = null;
-        _logger.LogInformation("Logout realizado com sucesso");
+
+        _logger.LogInformation("Logout efetuado");
+
+        // 🔔 Notifica Shell / App
+        WeakReferenceMessenger.Default.Send(new LogoutMessage());
+
+        await Task.CompletedTask;
     }
 }
