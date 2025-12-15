@@ -3,7 +3,6 @@
              xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:converters="clr-namespace:FinancasApp.Mobile.Converters">
-
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
@@ -11,9 +10,10 @@
                 <ResourceDictionary Source="Resources/Styles/Styles.xaml" />
             </ResourceDictionary.MergedDictionaries>
 
-            <!-- Converter global -->
+            <!-- Converters globais -->
             <converters:AmountToColorConverter x:Key="AmountToColorConverter" />
+            <!-- Fallback caso queira voltar ao estilo antigo -->
+            <x:Boolean x:Key="InverseBoolConverter" />
         </ResourceDictionary>
     </Application.Resources>
-
 </Application>

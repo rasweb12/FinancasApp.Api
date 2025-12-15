@@ -7,7 +7,7 @@ public interface IApiService
     [Post("/auth/login")]
     Task<ApiResponse<LoginResponse>> LoginAsync([Body] LoginRequest request);
 
-    [Post("/auth/register")]
+    [Post("/auth/register")]  // Já correto
     Task<ApiResponse<RegisterResponse>> RegisterAsync([Body] RegisterRequest request);
 
     // SYNC

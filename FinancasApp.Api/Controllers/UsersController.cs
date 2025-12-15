@@ -4,6 +4,7 @@ using FinancasApp.Api.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
@@ -18,12 +19,19 @@ public class UsersController : ControllerBase
 {
     private readonly AppDbContext _context;
     private readonly IConfiguration _config;
+    private readonly ILogger<UsersController> _logger;
 
-    public UsersController(AppDbContext context, IConfiguration config)
+    public UsersController(AppDbContext context, IConfiguration config, ILogger<UsersController> logger)
     {
         _context = context;
         _config = config;
+        _logger = logger;
     }
+
+    // Em Register e Login
+    //_logger.LogInformation("Tentativa de register: {Email}", dto.Email);
+     // Ou em erro
+    //_logger.LogWarning("Falha no login para {Email}", email);
 
     // POST /auth/register
     [HttpPost("register")]

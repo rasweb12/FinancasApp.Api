@@ -52,44 +52,40 @@ public partial class RegisterViewModel : ObservableObject
             var request = new RegisterRequest
             {
                 FullName = FullName.Trim(),
-                Email = Email.Trim(),
+                Email = Email.Trim().ToLowerInvariant(),  // ← Padroniza e-mail
                 Password = Password
             };
 
-            // Realizando o registro
             var response = await _api.RegisterAsync(request);
 
-            // Verifica se a resposta foi bem-sucedida
             if (!response.IsSuccessStatusCode || response.Content is null)
             {
-                ErrorMessage = "Erro ao criar conta. Tente novamente.";
+                ErrorMessage = response.StatusCode switch
+                {
+                    HttpStatusCode.BadRequest => "Dados inválidos (verifique os campos).",
+                    HttpStatusCode.Conflict => "E-mail já cadastrado.",
+                    HttpStatusCode.NotFound => "Endpoint de registro não encontrado (verifique IApiService).",
+                    HttpStatusCode.InternalServerError => "Erro interno no servidor.",
+                    _ => $"Falha na API: {response.StatusCode}"
+                };
                 HasError = true;
                 return;
             }
 
-            // Salva o token de autenticação
             await _auth.SaveTokenAsync(response.Content.Token);
-
-            // Navega para a tela inicial
-            await Shell.Current.GoToAsync("//home");
+            await Shell.Current.GoToAsync("//home");  // Agora funciona!
         }
         catch (ApiException apiEx)
         {
             HasError = true;
-            ErrorMessage = "Erro ao comunicar com o servidor.";
-
-            _logger.LogError(apiEx,
-                "Erro HTTP no registro | StatusCode: {StatusCode} | Content: {Content}",
-                apiEx.StatusCode,
-                apiEx.Content);
+            ErrorMessage = $"Erro de API: {apiEx.StatusCode} - {apiEx.Content}";
+            _logger.LogError(apiEx, "ApiException no register: {Content}", apiEx.Content);
         }
         catch (Exception ex)
         {
             HasError = true;
-            ErrorMessage = "Erro inesperado. Tente novamente.";
-
-            _logger.LogError(ex, "Erro inesperado no registro | Message: {Message} | Inner: {Inner}",
-                ex.Message, ex.InnerException?.Message);
+            ErrorMessage = $"Erro inesperado: {ex.Message}";
+            _logger.LogError(ex, "Exceção no register");
         }
         finally
         {

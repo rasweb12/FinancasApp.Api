@@ -8,8 +8,10 @@ using LiveChartsCore;
 using LiveChartsCore.SkiaSharpView;
 using LiveChartsCore.SkiaSharpView.Painting;
 using Microsoft.Extensions.Logging;
+using Refit;
 using SkiaSharp;
 using System.Collections.ObjectModel;
+using System.Net;
 
 namespace FinancasApp.Mobile.ViewModels;
 
@@ -96,9 +98,18 @@ public partial class HomeViewModel : ObservableObject
             await LoadChartAsync();
             StatusMessage = $"Atualizado • {DateTime.Now:HH:mm}";
         }
+        catch (ApiException apiEx) when (apiEx.StatusCode == HttpStatusCode.Unauthorized)
+        {
+            _logger.LogWarning("Token inválido ou expirado durante sync");
+            StatusMessage = "Sessão expirada • dados locais";
+            // Opcional: Forçar logout
+            // await _auth.ClearTokenAsync();
+            // await Shell.Current.GoToAsync("//login");
+        }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Sync falhou");
+            _logger.LogWarning(ex, "Sync falhou — usando cache");
+            await LoadFromCacheAsync();  // Garante dados locais mesmo offline
             StatusMessage = "Offline • dados locais";
         }
         finally
@@ -111,46 +122,79 @@ public partial class HomeViewModel : ObservableObject
     {
         try
         {
-            var transactions = await _local.GetTransactionsAsync();
-            var valid = transactions.Where(t => t.Date != default).OrderBy(t => t.Date).ToList();
+            // Reutiliza transações já carregadas (evita nova consulta ao banco)
+            var transactions = RecentTransactions.ToList(); // Já tem as últimas
+            var allTransactions = await _local.GetTransactionsAsync(); // Todas para gráfico preciso
+
+            var valid = allTransactions
+                .Where(t => t.Date != default(DateTime))
+                .OrderBy(t => t.Date)
+                .ToList();
+
             if (!valid.Any())
             {
                 LoadChartPlaceholder();
                 return;
             }
+
+            // Agrupa por mês/ano
             var grouped = valid
                 .GroupBy(t => new { t.Date.Year, t.Date.Month })
-                .OrderBy(g => g.Key.Year).ThenBy(g => g.Key.Month)
+                .OrderBy(g => g.Key.Year)
+                .ThenBy(g => g.Key.Month)
                 .Select(g => new
                 {
-                    Month = new DateTime(g.Key.Year, g.Key.Month, 1).ToString("MMM/yy"),
+                    Month = new DateTime(g.Key.Year, g.Key.Month, 1)
+                        .ToString("MMM/yy", System.Globalization.CultureInfo.GetCultureInfo("pt-BR")),
                     Total = g.Sum(t => t.Amount)
-                }).ToList();
+                })
+                .ToList();
 
+            // Acumulado para linha de evolução do saldo
             decimal acumulado = 0;
             var values = grouped.Select(g => acumulado += g.Total).ToArray();
 
+            // Série principal do gráfico
             BalanceSeries = new ISeries[]
             {
-                new LineSeries<decimal>
-                {
-                    Values = values,
-                    Fill = new SolidColorPaint(SKColors.DeepSkyBlue.WithAlpha(40)),
-                    Stroke = new SolidColorPaint(SKColors.DeepSkyBlue, 4),
-                    GeometrySize = 12,
-                    GeometryStroke = new SolidColorPaint(SKColors.White, 3),
-                    GeometryFill = new SolidColorPaint(SKColors.DeepSkyBlue)
-                }
+            new LineSeries<decimal>
+            {
+                Values = values,
+                Fill = new SolidColorPaint(SKColors.DeepSkyBlue.WithAlpha(40)),
+                Stroke = new SolidColorPaint(SKColors.DeepSkyBlue, 4),
+                GeometrySize = 12,
+                GeometryStroke = new SolidColorPaint(SKColors.White, 3),
+                GeometryFill = new SolidColorPaint(SKColors.DeepSkyBlue),
+                Name = "Saldo Acumulado"
+            }
             };
 
-            XAxes = [new Axis { Labels = grouped.Select(x => x.Month).ToArray() }];
-            YAxes = [new Axis { Labeler = value => $"R$ {value:N0}", MinLimit = 0 }];
+            // Eixos
+            XAxes = new Axis[]
+            {
+            new Axis
+            {
+                Labels = grouped.Select(x => x.Month).ToArray(),
+                LabelsRotation = 0,
+                SeparatorsPaint = new SolidColorPaint(SKColors.LightGray.WithAlpha(50))
+            }
+            };
+
+            YAxes = new Axis[]
+            {
+            new Axis
+            {
+                Labeler = value => $"R$ {value:N0}",
+                MinLimit = 0,
+                SeparatorsPaint = new SolidColorPaint(SKColors.LightGray.WithAlpha(50))
+            }
+            };
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Erro no gráfico");
+            _logger.LogError(ex, "Falha crítica ao carregar gráfico — usando placeholder");
             LoadChartPlaceholder();
-            StatusMessage = "Gráfico indisponível";
+            StatusMessage = "Gráfico temporariamente indisponível";
         }
     }
 }

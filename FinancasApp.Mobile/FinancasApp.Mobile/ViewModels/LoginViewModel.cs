@@ -123,4 +123,7 @@ public partial class LoginViewModel : ObservableObject
             "Biometria",
             "Biometria ainda não implementada",
             "OK");
+
+    partial void OnEmailChanged(string value) => LoginCommand.NotifyCanExecuteChanged();
+    partial void OnPasswordChanged(string value) => LoginCommand.NotifyCanExecuteChanged();
 }

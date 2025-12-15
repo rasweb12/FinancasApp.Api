@@ -6,51 +6,43 @@
              x:DataType="vm:LoginViewModel"
              Title="Login"
              BackgroundColor="#F8F9FA">
-
     <ScrollView>
         <VerticalStackLayout Padding="30"
                              Spacing="20"
                              VerticalOptions="Center">
-
             <!-- Logo -->
             <Image Source="logo.png"
                    HeightRequest="100"
                    HorizontalOptions="Center" />
-
             <!-- Título -->
             <Label Text="Bem-vindo ao FinançasApp"
                    FontSize="24"
                    FontAttributes="Bold"
                    HorizontalOptions="Center"
                    TextColor="#512BD4" />
-
             <!-- Email -->
             <Entry Placeholder="E-mail"
                    Text="{Binding Email}"
                    Keyboard="Email"
                    FontSize="16" />
-
             <!-- Senha -->
             <Entry Placeholder="Senha"
                    Text="{Binding Password}"
                    IsPassword="True"
                    FontSize="16" />
-
             <!-- Mensagem de erro -->
             <Label Text="{Binding ErrorMessage}"
                    TextColor="Red"
                    IsVisible="{Binding HasError}"
                    HorizontalOptions="Center" />
-
-            <!-- Botão Login -->
+            <!-- Botão Login – CORRIGIDO (self-closing + binding direto) -->
             <Button Text="Entrar"
                     Command="{Binding LoginCommand}"
-                    IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConverter}}"
+                    IsEnabled="{Binding !IsBusy}"
                     BackgroundColor="#512BD4"
                     TextColor="White"
                     CornerRadius="10"
                     FontAttributes="Bold" />
-
             <!-- Biometria -->
             <Label Text="Entrar com biometria"
                    TextColor="#512BD4"
@@ -59,7 +51,6 @@
                     <TapGestureRecognizer Command="{Binding BiometricLoginCommand}" />
                 </Label.GestureRecognizers>
             </Label>
-
             <!-- Registrar -->
             <HorizontalStackLayout HorizontalOptions="Center">
                 <Label Text="Novo aqui? "
@@ -71,12 +62,10 @@
                     </Label.GestureRecognizers>
                 </Label>
             </HorizontalStackLayout>
-
             <!-- Loading -->
             <ActivityIndicator IsRunning="{Binding IsBusy}"
                                IsVisible="{Binding IsBusy}"
                                Color="#512BD4" />
-
         </VerticalStackLayout>
     </ScrollView>
 </ContentPage>

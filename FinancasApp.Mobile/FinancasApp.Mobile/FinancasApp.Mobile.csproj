@@ -41,6 +41,13 @@
 		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'tizen'">6.5</SupportedOSPlatformVersion>
 	</PropertyGroup>
 
+  <!-- CONFIGURAÇÕES ESPECÍFICAS PARA DEBUG ANDROID (DESATIVA FAST DEPLOYMENT) -->
+  <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)' == 'Debug|net9.0-android|AnyCPU'">
+    <AndroidUseSharedRuntime>False</AndroidUseSharedRuntime>
+    <AndroidFastDeployment>False</AndroidFastDeployment>
+    <EmbedAssembliesIntoApk>True</EmbedAssembliesIntoApk>
+  </PropertyGroup> 
+
 	<ItemGroup>
 		<!-- App Icon -->
 		<MauiIcon Include="Resources\AppIcon\appicon.svg" ForegroundFile="Resources\AppIcon\appiconfg.svg" Color="#512BD4" />
@@ -64,12 +71,10 @@
 	</ItemGroup>
 
 	<ItemGroup>
-    <PackageReference Include="LiveChartsCore" Version="2.0.0-rc6.1" />
-    <PackageReference Include="LiveChartsCore.SkiaSharpView" Version="2.0.0-rc6.1" />
-    <PackageReference Include="LiveChartsCore.SkiaSharpView.Maui" Version="2.0.0-rc6.1" />
+    <PackageReference Include="LiveChartsCore.SkiaSharpView.Maui" Version="2.0.0-rc6.1" />   
+    <PackageReference Include="SkiaSharp.Views.Maui.Controls" Version="3.119.1" /> 
     <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.0" />
     <PackageReference Include="Microsoft.Extensions.Http.Resilience" Version="10.0.0" />
-    <PackageReference Include="SkiaSharp.Views.Maui.Controls" Version="3.119.1" />
     <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.0" />
     <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="10.0.0" />
     <PackageReference Include="Microsoft.Extensions.Logging.EventSource" Version="10.0.0" />

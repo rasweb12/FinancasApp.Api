@@ -20,6 +20,7 @@ using Microsoft.Extensions.Logging;
 using Refit;
 using SkiaSharp.Views.Maui.Controls.Hosting;
 using SQLite;
+using Microsoft.Maui.Networking; // Para DeviceInfo
 
 namespace FinancasApp.Mobile;
 
@@ -28,7 +29,6 @@ public static class MauiProgram
     public static MauiApp CreateMauiApp()
     {
         var builder = MauiApp.CreateBuilder();
-
         builder
             .UseMauiApp<App>()
             .UseSkiaSharp()
@@ -53,18 +53,22 @@ public static class MauiProgram
 
 #if DEBUG
         var apiUrl = DeviceInfo.Current.Platform == DevicePlatform.Android
-            ? "http://10.0.2.2:7042"
-            : "http://localhost:7042";
+            ? "https://10.0.2.2:7043"   // ◄ HTTPS primário (porta 7043 da API)
+            : "https://localhost:7043";
 #else
         var apiUrl = "https://financasapp-api.up.railway.app";
 #endif
 
-        // 🔐 HttpHandler
-        builder.Services.AddSingleton(new HttpClientHandler
+        // 🔐 Handler com bypass de certificado (APENAS DEBUG — ignora certificado dev)
+#if DEBUG
+        builder.Services.AddSingleton<HttpClientHandler>(sp =>
         {
-            AllowAutoRedirect = true,
-            UseCookies = false
+            var handler = new HttpClientHandler();
+            handler.ServerCertificateCustomValidationCallback =
+                (message, cert, chain, errors) => true; // ◄ Ignora erros de certificado
+            return handler;
         });
+#endif
 
         // 🔐 Refit + JWT
         builder.Services
@@ -73,9 +77,7 @@ public static class MauiProgram
                 AuthorizationHeaderValueGetter = async (request, _) =>
                 {
                     var path = request.RequestUri?.AbsolutePath ?? "";
-
-                    if (path.Contains("/auth/login") ||
-                        path.Contains("/auth/register"))
+                    if (path.Contains("/auth/login") || path.Contains("/auth/register"))
                         return null;
 
                     var token = await SecureStorage.Default.GetAsync("jwt_token");
@@ -87,25 +89,26 @@ public static class MauiProgram
             .ConfigureHttpClient(c =>
             {
                 c.BaseAddress = new Uri(apiUrl);
-                c.Timeout = TimeSpan.FromSeconds(120);
+                c.Timeout = TimeSpan.FromSeconds(300); // ◄ Timeout maior para testes
             })
+#if DEBUG
             .ConfigurePrimaryHttpMessageHandler(sp =>
                 sp.GetRequiredService<HttpClientHandler>());
+#else
+            .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler());
+#endif
 
         // 💾 SQLite
         var dbPath = Path.Combine(FileSystem.AppDataDirectory, "financas.db3");
-
         builder.Services.AddSingleton(_ =>
         {
             var conn = new SQLiteAsyncConnection(dbPath);
-
             conn.CreateTableAsync<AccountLocal>().Wait();
             conn.CreateTableAsync<TransactionLocal>().Wait();
             conn.CreateTableAsync<CreditCardLocal>().Wait();
             conn.CreateTableAsync<InvoiceLocal>().Wait();
             conn.CreateTableAsync<TagLocal>().Wait();
             conn.CreateTableAsync<TagAssignmentLocal>().Wait();
-
             return conn;
         });
 
@@ -140,6 +143,8 @@ public static class MauiProgram
         // 🧭 Shell
         builder.Services.AddSingleton<AppShellViewModel>();
         builder.Services.AddSingleton<AppShell>();
+
+        builder.Logging.AddDebug(); // Logs visíveis no Output
 
         return builder.Build();
     }

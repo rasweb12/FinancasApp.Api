@@ -26,7 +26,10 @@ builder.Services.AddSwaggerGen(c =>
     c.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
         {
-            new OpenApiSecurityScheme { Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" } },
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
+            },
             Array.Empty<string>()
         }
     });
@@ -39,6 +42,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 // ============== JWT ==============
 var key = builder.Configuration["Jwt:Key"]
           ?? "sua-chave-super-secreta-minimo-32-caracteres-1234567890";
+
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
@@ -54,6 +58,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ClockSkew = TimeSpan.Zero
         };
     });
+
 builder.Services.AddAuthorization();
 
 // ============== SERVICES + MAPPERS ==============
@@ -66,28 +71,24 @@ builder.Services.AddAutoMapper(typeof(MappingProfile));
 // ============== APP ==============
 var app = builder.Build();
 
-// Habilitar Swagger em DEV
+// Pipeline de Middleware — ORDEM CORRETA E CONSISTENTE
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
-
-    // Habilitar HTTP em DEV
-    app.UseRouting();
-    app.UseAuthorization();
-}
-else
-{
-    // Redirecionar para HTTPS em PRODUÇÃO
-    app.UseHttpsRedirection();
 }
 
-app.UseAuthentication();
+app.UseHttpsRedirection();           // Sempre (redireciona HTTP → HTTPS em prod)
+
+app.UseAuthentication();            // ◄ Autenticação sempre
+app.UseAuthorization();             // ◄ Autorização sempre
+
 app.MapControllers();
 
-// MIGRAÇÃO AUTOMÁTICA NA STARTUP (só em dev)
-using (var scope = app.Services.CreateScope())
+// MIGRAÇÃO AUTOMÁTICA — APENAS EM DESENVOLVIMENTO
+if (app.Environment.IsDevelopment())
 {
+    using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     db.Database.Migrate();
 }
