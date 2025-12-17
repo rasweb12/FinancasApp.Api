@@ -94,6 +94,9 @@
 	  <MauiXaml Update="Views\Auth\RegisterPage.xaml">
 	    <Generator>MSBuild:Compile</Generator>
 	  </MauiXaml>
+	  <MauiXaml Update="Views\CategoriesPage.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </MauiXaml>
 	  <MauiXaml Update="Views\CreditCards\CreditCardsPage.xaml">
 	    <Generator>MSBuild:Compile</Generator>
 	  </MauiXaml>
@@ -110,6 +113,13 @@
 
 	<ItemGroup>
 	  <Folder Include="Repositories\" />
+	  <Folder Include="Views\Categories\" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <Compile Update="Views\CategoriesPage.xaml.cs">
+	    <DependentUpon>CategoriesPage.xaml</DependentUpon>
+	  </Compile>
 	</ItemGroup>
 
 </Project>

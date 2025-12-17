@@ -1,4 +1,5 @@
 ﻿// Services/Storage/LocalStorageService.cs
+// VERSÃO FINAL COM SUPORTE COMPLETO A CATEGORIAS — 15/12/2025
 using FinancasApp.Mobile.Models.Local;
 using SQLite;
 
@@ -36,7 +37,13 @@ public class LocalStorageService : ILocalStorageService
     public async Task<int> DeleteAsync<T>(Guid id) where T : BaseEntity, new()
     {
         var entity = await GetByIdAsync<T>(id);
-        return entity is not null ? await _db.DeleteAsync(entity) : 0;
+        if (entity is null) return 0;
+
+        // Soft delete (marca como deletado para sync)
+        entity.IsDeleted = true;
+        entity.IsDirty = true;
+        entity.UpdatedAt = DateTime.UtcNow;
+        return await _db.UpdateAsync(entity);
     }
 
     // ==============================================================
@@ -44,24 +51,29 @@ public class LocalStorageService : ILocalStorageService
     // ==============================================================
     public Task<List<TransactionLocal>> GetTransactionsAsync() => GetAllAsync<TransactionLocal>();
     public Task<int> SaveTransactionAsync(TransactionLocal t) => SaveAsync(t);
-    public Task DeleteTransactionAsync(Guid id) => DeleteAsync<TransactionLocal>(id); // ADICIONADO
+    public Task DeleteTransactionAsync(Guid id) => DeleteAsync<TransactionLocal>(id);
 
     public Task<List<AccountLocal>> GetAccountsAsync() => GetAllAsync<AccountLocal>();
     public Task<int> SaveAccountAsync(AccountLocal a) => SaveAsync(a);
-    public Task DeleteAccountAsync(Guid id) => DeleteAsync<AccountLocal>(id); // ADICIONADO
+    public Task DeleteAccountAsync(Guid id) => DeleteAsync<AccountLocal>(id);
 
     public Task<List<CreditCardLocal>> GetCreditCardsAsync() => GetAllAsync<CreditCardLocal>();
     public Task<CreditCardLocal?> GetCreditCardByIdAsync(Guid id) => GetByIdAsync<CreditCardLocal>(id);
     public Task<int> SaveCreditCardAsync(CreditCardLocal card) => SaveAsync(card);
-    public Task DeleteCreditCardAsync(Guid id) => DeleteAsync<CreditCardLocal>(id); // ADICIONADO
+    public Task DeleteCreditCardAsync(Guid id) => DeleteAsync<CreditCardLocal>(id);
 
     public Task<List<InvoiceLocal>> GetInvoicesAsync() => GetAllAsync<InvoiceLocal>();
     public async Task<List<InvoiceLocal>> GetPendingInvoicesAsync() =>
         await _db.Table<InvoiceLocal>().Where(i => i.IsDirty || i.IsDeleted).ToListAsync();
-
     public async Task<InvoiceLocal?> GetCurrentInvoiceAsync() =>
         (await GetInvoicesAsync()).OrderByDescending(i => i.CreatedAt).FirstOrDefault();
-
     public Task<int> SaveInvoiceAsync(InvoiceLocal i) => SaveAsync(i);
-    public Task DeleteInvoiceAsync(Guid id) => DeleteAsync<InvoiceLocal>(id); // ADICIONADO
+    public Task DeleteInvoiceAsync(Guid id) => DeleteAsync<InvoiceLocal>(id);
+
+    // ◄ MÉTODOS PARA CATEGORIAS (AGORA IMPLEMENTADOS)
+    public Task<List<CategoryLocal>> GetCategoriesAsync() => GetAllAsync<CategoryLocal>();
+
+    public Task<int> SaveCategoryAsync(CategoryLocal category) => SaveAsync(category);
+
+    public Task DeleteCategoryAsync(Guid id) => DeleteAsync<CategoryLocal>(id);
 }

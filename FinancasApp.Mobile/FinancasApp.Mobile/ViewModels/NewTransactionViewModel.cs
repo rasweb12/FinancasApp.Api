@@ -12,7 +12,7 @@ namespace FinancasApp.Mobile.ViewModels;
 public partial class NewTransactionViewModel : ObservableObject
 {
     private readonly ILocalStorageService _local;
-    private readonly SyncService _sync;
+    private readonly ISyncService _sync; // ◄ CORRIGIDO: INTERFACE
     private readonly ILogger<NewTransactionViewModel> _logger;
 
     [ObservableProperty] private string[] transactionTypes = ["Despesa", "Receita"];
@@ -33,12 +33,12 @@ public partial class NewTransactionViewModel : ObservableObject
     public bool IsValid => Amount > 0 && !string.IsNullOrWhiteSpace(Description);
 
     public NewTransactionViewModel(
-        ILocalStorageService local,
-        SyncService sync,
-        ILogger<NewTransactionViewModel> logger)
+            ILocalStorageService local,
+            ISyncService sync, // Interface
+            ILogger<NewTransactionViewModel> logger)
     {
         _local = local;
-        _sync = sync;
+        _sync = sync; // Agora compila!
         _logger = logger;
         LoadTags();
     }

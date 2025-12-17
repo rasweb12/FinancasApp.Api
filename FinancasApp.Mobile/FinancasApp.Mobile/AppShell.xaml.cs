@@ -23,11 +23,10 @@ public partial class AppShell : Shell
     {
         base.OnAppearing();
 
-        // 🔐 Decide tela inicial
         if (_viewModel.IsAuthenticated)
-            await GoToAsync("//home");
+            await Current.GoToAsync("//home");
         else
-            await GoToAsync("//login");
+            await Current.GoToAsync("//login");
     }
 
     // ✅ MÉTODO QUE ESTAVA FALTANDO

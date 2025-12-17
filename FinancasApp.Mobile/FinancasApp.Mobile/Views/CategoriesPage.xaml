@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage x:Class="FinancasApp.Mobile.Views.Categories.CategoriesPage" 
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             Title="Categorias"
+             BackgroundColor="#F8F9FA">
+    <!-- Conteúdo igual ao anterior -->
+    <RefreshView Command="{Binding LoadCategoriesCommand}"
+                 IsRefreshing="{Binding IsBusy}">
+        <VerticalStackLayout Padding="20" Spacing="15">
+            <CollectionView ItemsSource="{Binding Categories}">
+                <!-- ItemTemplate igual -->
+            </CollectionView>
+            <Button Text="+ Nova Categoria"
+                    Command="{Binding AddCategoryCommand}"
+                    BackgroundColor="#512BD4"
+                    TextColor="White"
+                    CornerRadius="30"
+                    HeightRequest="56"
+                    HorizontalOptions="Center" />
+        </VerticalStackLayout>
+    </RefreshView>
+</ContentPage>

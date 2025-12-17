@@ -51,7 +51,7 @@ public partial class LoginViewModel : ObservableObject
                 Password = Password
             };
 
-            var response = await _api.LoginAsync(request);
+            var response = await _api.LoginAsync(request); // ◄ CORRIGIDO
 
             if (!response.IsSuccessStatusCode || response.Content is null)
             {

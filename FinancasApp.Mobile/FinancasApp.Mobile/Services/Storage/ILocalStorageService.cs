@@ -1,5 +1,4 @@
-﻿// Services/Storage/ILocalStorageService.cs
-using FinancasApp.Mobile.Models.Local;
+﻿using FinancasApp.Mobile.Models.Local;
 
 namespace FinancasApp.Mobile.Services.Storage;
 
@@ -22,20 +21,27 @@ public interface ILocalStorageService
     // ==============================================================
     Task<List<TransactionLocal>> GetTransactionsAsync();
     Task<int> SaveTransactionAsync(TransactionLocal transaction);
-    Task DeleteTransactionAsync(Guid id); // ← NOVO: FALTAVA!
+    Task DeleteTransactionAsync(Guid id);
 
     Task<List<AccountLocal>> GetAccountsAsync();
     Task<int> SaveAccountAsync(AccountLocal account);
-    Task DeleteAccountAsync(Guid id); // ← NOVO: FALTAVA!
+    Task DeleteAccountAsync(Guid id);
 
     Task<List<CreditCardLocal>> GetCreditCardsAsync();
     Task<CreditCardLocal?> GetCreditCardByIdAsync(Guid id);
     Task<int> SaveCreditCardAsync(CreditCardLocal card);
-    Task DeleteCreditCardAsync(Guid id); // ← NOVO: FALTAVA!
+    Task DeleteCreditCardAsync(Guid id);
 
     Task<List<InvoiceLocal>> GetInvoicesAsync();
     Task<List<InvoiceLocal>> GetPendingInvoicesAsync();
     Task<InvoiceLocal?> GetCurrentInvoiceAsync();
     Task<int> SaveInvoiceAsync(InvoiceLocal invoice);
-    Task DeleteInvoiceAsync(Guid id); // ← NOVO: FALTAVA!
+    Task DeleteInvoiceAsync(Guid id);
+
+    // ==============================================================
+    // NOVOS MÉTODOS PARA CATEGORIAS
+    // ==============================================================
+    Task<List<CategoryLocal>> GetCategoriesAsync();
+    Task<int> SaveCategoryAsync(CategoryLocal category);
+    Task DeleteCategoryAsync(Guid id);
 }

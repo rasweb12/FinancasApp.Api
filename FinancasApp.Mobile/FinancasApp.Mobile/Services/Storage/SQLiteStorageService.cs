@@ -1,5 +1,5 @@
 ﻿// Services/Storage/SQLiteStorageService.cs
-// VERSÃO FINAL, LIMPA, MODERNA E IMORTAL — 06/12/2025
+// VERSÃO FINAL COM SUPORTE A CATEGORIAS — 14/12/2025
 using FinancasApp.Mobile.Models.Local;
 using FinancasApp.Mobile.Services.LocalDatabase;
 
@@ -13,6 +13,7 @@ public class SQLiteStorageService : ILocalStorageService
     private readonly IRepository<InvoiceLocal> _invoiceRepo;
     private readonly IRepository<TagLocal> _tagRepo;
     private readonly IRepository<TagAssignmentLocal> _tagAssignmentRepo;
+    private readonly IRepository<CategoryLocal> _categoryRepo; // ◄ NOVO: Repositório de categorias
 
     public SQLiteStorageService(
         IRepository<AccountLocal> accountRepo,
@@ -20,7 +21,8 @@ public class SQLiteStorageService : ILocalStorageService
         IRepository<CreditCardLocal> creditCardRepo,
         IRepository<InvoiceLocal> invoiceRepo,
         IRepository<TagLocal> tagRepo,
-        IRepository<TagAssignmentLocal> tagAssignmentRepo)
+        IRepository<TagAssignmentLocal> tagAssignmentRepo,
+        IRepository<CategoryLocal> categoryRepo) // ◄ Injetado
     {
         _accountRepo = accountRepo;
         _transactionRepo = transactionRepo;
@@ -28,10 +30,11 @@ public class SQLiteStorageService : ILocalStorageService
         _invoiceRepo = invoiceRepo;
         _tagRepo = tagRepo;
         _tagAssignmentRepo = tagAssignmentRepo;
+        _categoryRepo = categoryRepo;
     }
 
     // ==============================================================
-    // CRUD Genérico — Elegante, seguro e 100% funcional
+    // CRUD Genérico — Atualizado com suporte a CategoryLocal
     // ==============================================================
     public async Task<T?> GetByIdAsync<T>(Guid id) where T : BaseEntity, new()
     {
@@ -43,6 +46,7 @@ public class SQLiteStorageService : ILocalStorageService
             var t when t == typeof(InvoiceLocal) => await _invoiceRepo.GetByIdAsync(id) as T,
             var t when t == typeof(TagLocal) => await _tagRepo.GetByIdAsync(id) as T,
             var t when t == typeof(TagAssignmentLocal) => await _tagAssignmentRepo.GetByIdAsync(id) as T,
+            var t when t == typeof(CategoryLocal) => await _categoryRepo.GetByIdAsync(id) as T, // ◄ ADICIONADO
             _ => null
         };
     }
@@ -57,16 +61,15 @@ public class SQLiteStorageService : ILocalStorageService
             var t when t == typeof(InvoiceLocal) => (await _invoiceRepo.GetAllAsync()).Cast<T>(),
             var t when t == typeof(TagLocal) => (await _tagRepo.GetAllAsync()).Cast<T>(),
             var t when t == typeof(TagAssignmentLocal) => (await _tagAssignmentRepo.GetAllAsync()).Cast<T>(),
+            var t when t == typeof(CategoryLocal) => (await _categoryRepo.GetAllAsync()).Cast<T>(), // ◄ ADICIONADO
             _ => Enumerable.Empty<T>()
         };
-
         return result.ToList();
     }
 
     public async Task<int> SaveAsync<T>(T entity) where T : BaseEntity, new()
     {
         if (entity == null) throw new ArgumentNullException(nameof(entity));
-
         entity.UpdatedAt = DateTime.UtcNow;
         entity.IsDirty = true;
 
@@ -78,6 +81,7 @@ public class SQLiteStorageService : ILocalStorageService
             InvoiceLocal i => await _invoiceRepo.SaveAsync(i),
             TagLocal tag => await _tagRepo.SaveAsync(tag),
             TagAssignmentLocal ta => await _tagAssignmentRepo.SaveAsync(ta),
+            CategoryLocal cat => await _categoryRepo.SaveAsync(cat), // ◄ ADICIONADO
             _ => throw new NotSupportedException($"Entidade do tipo {typeof(T).Name} não suportada.")
         };
     }
@@ -95,12 +99,13 @@ public class SQLiteStorageService : ILocalStorageService
             InvoiceLocal i => await _invoiceRepo.DeleteAsync(i),
             TagLocal tag => await _tagRepo.DeleteAsync(tag),
             TagAssignmentLocal ta => await _tagAssignmentRepo.DeleteAsync(ta),
+            CategoryLocal cat => await _categoryRepo.DeleteAsync(cat), // ◄ ADICIONADO
             _ => 0
         };
     }
 
     // ==============================================================
-    // MÉTODOS ESPECÍFICOS — Compatibilidade total com SyncService
+    // MÉTODOS ESPECÍFICOS — Agora com Categorias
     // ==============================================================
     public Task<List<TransactionLocal>> GetTransactionsAsync() => _transactionRepo.GetAllAsync();
     public Task<int> SaveTransactionAsync(TransactionLocal t) => SaveAsync(t);
@@ -119,7 +124,11 @@ public class SQLiteStorageService : ILocalStorageService
     public Task<List<InvoiceLocal>> GetPendingInvoicesAsync() => _invoiceRepo.GetDirtyAsync();
     public Task<InvoiceLocal?> GetCurrentInvoiceAsync() =>
         _invoiceRepo.GetAllAsync().ContinueWith(t => t.Result.OrderByDescending(i => i.CreatedAt).FirstOrDefault());
-
     public Task<int> SaveInvoiceAsync(InvoiceLocal i) => SaveAsync(i);
     public Task DeleteInvoiceAsync(Guid id) => DeleteAsync<InvoiceLocal>(id);
+
+    // ◄ NOVOS MÉTODOS PARA CATEGORIAS
+    public Task<List<CategoryLocal>> GetCategoriesAsync() => _categoryRepo.GetAllAsync();
+    public Task<int> SaveCategoryAsync(CategoryLocal category) => SaveAsync(category);
+    public Task DeleteCategoryAsync(Guid id) => DeleteAsync<CategoryLocal>(id);
 }

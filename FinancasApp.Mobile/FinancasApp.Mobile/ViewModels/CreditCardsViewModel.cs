@@ -12,7 +12,7 @@ namespace FinancasApp.Mobile.ViewModels;
 public partial class CreditCardsViewModel : ObservableObject
 {
     private readonly ILocalStorageService _local;
-    private readonly SyncService _sync;
+    private readonly ISyncService _sync; // ◄ CORRIGIDO: INTERFACE
     private readonly ILogger<CreditCardsViewModel> _logger;
 
     [ObservableProperty] private ObservableCollection<CreditCardLocal> cards = new();
@@ -20,11 +20,11 @@ public partial class CreditCardsViewModel : ObservableObject
 
     public CreditCardsViewModel(
         ILocalStorageService local,
-        SyncService sync,
+        ISyncService sync, // Interface
         ILogger<CreditCardsViewModel> logger)
     {
         _local = local;
-        _sync = sync;
+        _sync = sync; // Agora compila!
         _logger = logger;
     }
 

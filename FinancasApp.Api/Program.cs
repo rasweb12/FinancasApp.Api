@@ -64,8 +64,9 @@ builder.Services.AddAuthorization();
 // ============== SERVICES + MAPPERS ==============
 builder.Services.AddScoped<IAccountService, AccountService>();
 builder.Services.AddScoped<ITransactionService, TransactionService>();
-builder.Services.AddScoped<ICreditCardService, CreditCardService>();
+builder.Services.AddScoped<ICreditCardService, CreditCardService>(); // ◄ CONFIRMADO
 builder.Services.AddScoped<IInvoiceService, InvoiceService>();
+builder.Services.AddScoped<ICategoryService, CategoryService>();   // ◄ NOVO: CATEGORIAS
 builder.Services.AddAutoMapper(typeof(MappingProfile));
 
 // ============== APP ==============
@@ -78,10 +79,9 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();           // Sempre (redireciona HTTP → HTTPS em prod)
-
-app.UseAuthentication();            // ◄ Autenticação sempre
-app.UseAuthorization();             // ◄ Autorização sempre
+app.UseHttpsRedirection(); // Sempre (redireciona HTTP → HTTPS em prod)
+app.UseAuthentication();  // ◄ Autenticação sempre
+app.UseAuthorization();   // ◄ Autorização sempre
 
 app.MapControllers();
 

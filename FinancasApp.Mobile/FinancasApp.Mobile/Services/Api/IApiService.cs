@@ -23,6 +23,9 @@ public interface IApiService
     [Get("/sync/invoices")]
     Task<ApiResponse<List<InvoiceDto>>> GetInvoicesForSyncAsync();
 
+    [Get("/sync/categories")]
+    Task<ApiResponse<List<CategoryDto>>> GetCategoriesForSyncAsync();
+
     [Post("/sync")]
     Task<ApiResponse<SyncResponseDto>> SyncAllAsync([Body] SyncRequestDto request);
 }

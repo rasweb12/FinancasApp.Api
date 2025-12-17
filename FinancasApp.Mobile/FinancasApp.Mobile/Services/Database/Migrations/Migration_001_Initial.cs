@@ -11,5 +11,6 @@ public static class Migration_001_Initial
         await db.CreateTableAsync<TransactionLocal>();
         await db.CreateTableAsync<CreditCardLocal>();
         await db.CreateTableAsync<InvoiceLocal>();
+        await db.CreateTableAsync<CategoryLocal>();
     }
 }

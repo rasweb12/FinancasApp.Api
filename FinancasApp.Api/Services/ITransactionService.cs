@@ -1,21 +1,20 @@
-﻿// Services/TransactionService.cs
-using FinancasApp.Api.Data;
+﻿using FinancasApp.Api.Data;
 using FinancasApp.Api.DTOs;
 using FinancasApp.Api.Models;
-using FinancasApp.Api.Models.Extensions;
 using Microsoft.EntityFrameworkCore;
 
 namespace FinancasApp.Api.Services;
 
 public interface ITransactionService
 {
-    Task SyncAsync(List<TransactionDto> transactions, Guid userId);
     Task<List<Transaction>> GetAllAsync(Guid userId);
+    Task SyncAsync(List<TransactionDto> items, Guid userId);
 }
 
 public class TransactionService : ITransactionService
 {
     private readonly AppDbContext _db;
+
     public TransactionService(AppDbContext db) => _db = db;
 
     public async Task<List<Transaction>> GetAllAsync(Guid userId)
@@ -63,15 +62,13 @@ public class TransactionService : ITransactionService
         {
             ApplyUpdates(existing, dto);
             existing.IsDeleted = false;
-            existing.MarkAsDirty();
-        }
-        else
-        {
-            // Servidor mais novo → ignora atualização do mobile
+            existing.IsDirty = true;
         }
 
         if (existing != null)
-            existing.MarkAsSynced();
+        {
+            existing.IsDirty = false; // Synced
+        }
     }
 
     private async Task DeleteAsync(Guid id, Guid userId)
@@ -82,7 +79,7 @@ public class TransactionService : ITransactionService
         if (entity != null)
         {
             entity.IsDeleted = true;
-            entity.MarkAsDirty();
+            entity.IsDirty = true;
         }
     }
 
@@ -93,6 +90,7 @@ public class TransactionService : ITransactionService
         for (int i = 1; i <= dto.InstallmentTotal; i++)
         {
             var installmentDate = dto.Date.AddMonths(i - 1);
+
             var trx = new Transaction
             {
                 Id = Guid.NewGuid(),
@@ -103,14 +101,12 @@ public class TransactionService : ITransactionService
                 Date = installmentDate,
                 Type = dto.Type,
                 SubType = dto.SubType,
-                CategoryId = dto.CategoryId,
+                CategoryId = dto.CategoryId, // Guid?
                 Tags = dto.Tags,
                 InstallmentNumber = i,
                 InstallmentTotal = dto.InstallmentTotal,
                 TransactionGroupId = groupId,
                 IsRecurring = dto.IsRecurring,
-
-                // Sync fields
                 IsNew = true,
                 IsDirty = true,
                 IsDeleted = false,
@@ -125,18 +121,8 @@ public class TransactionService : ITransactionService
 
     private async Task AttachToInvoiceAsync(Transaction trx)
     {
-        // CORRIGIDO: Cartão de crédito NÃO tem AccountId
-        // Vamos buscar por transações de cartão (Type == "CreditCardExpense") ou por outra lógica
-        // Por enquanto, vamos pular se não for despesa de cartão
-        if (trx.Type != "CreditCardExpense") return;
-
-        // Alternativa: buscar cartão pelo nome ou outra regra (ou deixar pra depois)
-        // Por enquanto, desativamos essa lógica até definirmos como identificar o cartão
+        // Lógica desativada temporariamente
         return;
-
-        // Quando quiser reativar:
-        // var card = await _db.CreditCards.FirstOrDefaultAsync(...);
-        // então cria/atualiza invoice...
     }
 
     private Transaction MapToEntity(TransactionDto dto, Guid userId)
@@ -157,8 +143,6 @@ public class TransactionService : ITransactionService
             InstallmentTotal = dto.InstallmentTotal,
             TransactionGroupId = dto.TransactionGroupId,
             IsRecurring = dto.IsRecurring,
-
-            // Sync fields
             IsNew = dto.IsNew,
             IsDirty = true,
             IsDeleted = false,

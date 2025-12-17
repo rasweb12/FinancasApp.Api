@@ -1,4 +1,6 @@
-﻿using FinancasApp.Api.Data;
+﻿// CreditCardService.cs
+using AutoMapper;
+using FinancasApp.Api.Data;
 using FinancasApp.Api.DTOs;
 using FinancasApp.Api.Models;
 using Microsoft.EntityFrameworkCore;
@@ -7,92 +9,95 @@ namespace FinancasApp.Api.Services;
 
 public class CreditCardService : ICreditCardService
 {
-    private readonly AppDbContext _db;
+    private readonly AppDbContext _context;
+    private readonly IMapper _mapper;
 
-    public CreditCardService(AppDbContext db)
+    public CreditCardService(AppDbContext context, IMapper mapper)
     {
-        _db = db;
+        _context = context;
+        _mapper = mapper;
     }
 
-    public async Task<List<CreditCard>> GetAllAsync(Guid userId)
+    public async Task<List<CreditCardDto>> GetByUserAsync(Guid userId)
     {
-        return await _db.CreditCards
-            .Where(c => c.UserId == userId)
+        var entities = await _context.CreditCards
+            .Where(c => c.UserId == userId && !c.IsDeleted)
             .ToListAsync();
+
+        return _mapper.Map<List<CreditCardDto>>(entities);
     }
 
-    public async Task<CreditCard?> GetByIdAsync(Guid id, Guid userId)
+    public async Task<List<CreditCardDto>> GetAllAsync(Guid userId)
     {
-        return await _db.CreditCards
-            .FirstOrDefaultAsync(c => c.Id == id && c.UserId == userId);
+        // Reutiliza GetByUserAsync (mesmo filtro: user + not deleted)
+        return await GetByUserAsync(userId);
     }
 
-    public async Task<CreditCard> AddAsync(CreditCard card)
+    public async Task<List<CreditCardDto>> GetForSyncAsync(Guid userId)
     {
-        _db.CreditCards.Add(card);
-        await _db.SaveChangesAsync();
-        return card;
+        return await GetByUserAsync(userId); // Mesmo filtro
     }
 
-    public async Task<CreditCard> UpdateAsync(CreditCard card)
+    public async Task<CreditCardDto> CreateAsync(CreditCardDto dto, Guid userId)
     {
-        _db.CreditCards.Update(card);
-        await _db.SaveChangesAsync();
-        return card;
+        var entity = _mapper.Map<CreditCard>(dto);
+        entity.UserId = userId;
+        entity.CreatedAt = DateTime.UtcNow;
+        entity.UpdatedAt = DateTime.UtcNow;
+
+        _context.CreditCards.Add(entity);
+        await _context.SaveChangesAsync();
+
+        return _mapper.Map<CreditCardDto>(entity);
     }
 
-    public async Task<bool> DeleteAsync(Guid id, Guid userId)
+    public async Task UpdateAsync(CreditCardDto dto)
     {
-        var card = await GetByIdAsync(id, userId);
-        if (card == null) return false;
+        var entity = await _context.CreditCards.FindAsync(dto.Id);
+        if (entity == null) throw new KeyNotFoundException();
 
-        _db.CreditCards.Remove(card);
-        await _db.SaveChangesAsync();
-        return true;
+        _mapper.Map(dto, entity);
+        entity.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
     }
 
-    public async Task SyncAsync(List<CreditCardDto> incoming, Guid userId)
+    public async Task SoftDeleteAsync(Guid id)
     {
-        foreach (var dto in incoming)
+        var entity = await _context.CreditCards.FindAsync(id);
+        if (entity == null) return;
+
+        entity.IsDeleted = true;
+        entity.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+    }
+
+    public async Task SyncAsync(List<CreditCardDto> dtos, Guid userId)
+    {
+        foreach (var dto in dtos)
         {
-            var existing = await _db.CreditCards
-                .FirstOrDefaultAsync(x => x.Id == dto.Id && x.UserId == userId);
+            var entity = await _context.CreditCards.FindAsync(dto.Id);
 
-            if (dto.IsDeleted)
+            if (entity == null)
             {
-                if (existing != null)
-                    _db.CreditCards.Remove(existing);
-
-                continue;
+                entity = _mapper.Map<CreditCard>(dto);
+                entity.UserId = userId;
+                _context.CreditCards.Add(entity);
             }
-
-            if (existing == null)
+            else if (dto.IsDeleted)
             {
-                var card = new CreditCard
-                {
-                    Id = dto.Id,
-                    UserId = userId,
-                    Name = dto.Name,
-                    CreditLimit = dto.CreditLimit,
-                    ClosingDay = dto.ClosingDay,
-                    DueDay = dto.DueDay,
-                    CreatedAt = DateTime.UtcNow
-                };
-
-                _db.CreditCards.Add(card);
+                entity.IsDeleted = true;
+                entity.UpdatedAt = DateTime.UtcNow;
             }
-            else
+            else if (dto.UpdatedAt > entity.UpdatedAt)
             {
-                existing.Name = dto.Name;
-                existing.CreditLimit = dto.CreditLimit;
-                existing.ClosingDay = dto.ClosingDay;
-                existing.DueDay = dto.DueDay;
-                existing.UpdatedAt = DateTime.UtcNow;
-
-                _db.CreditCards.Update(existing);
+                _mapper.Map(dto, entity);
+                entity.UserId = userId;
+                entity.UpdatedAt = DateTime.UtcNow;
             }
         }
 
-        await _db.SaveChangesAsync();
+        await _context.SaveChangesAsync();
     }
 }

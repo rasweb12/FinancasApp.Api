@@ -92,8 +92,8 @@ public partial class AccountsViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Erro ao adicionar conta");
-            await Shell.Current.DisplayAlert("Erro", "Não foi possível criar a conta", "OK");
+            _logger.LogError(ex, "Erro ao carregar contas"); // ◄ CORRIGIDO
+            await Shell.Current.DisplayAlert("Erro", "Falha ao carregar contas", "OK");
         }
     }
 

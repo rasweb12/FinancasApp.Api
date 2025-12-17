@@ -1,6 +1,4 @@
-﻿// MauiProgram.cs — VERSÃO FINAL ESTÁVEL (.NET 9 | Android)
-using System.Text.Json;
-using FinancasApp.Mobile.Models.Local;
+﻿using FinancasApp.Mobile.Models.Local;
 using FinancasApp.Mobile.Services.Api;
 using FinancasApp.Mobile.Services.Auth;
 using FinancasApp.Mobile.Services.LocalDatabase;
@@ -10,17 +8,19 @@ using FinancasApp.Mobile.ViewModels;
 using FinancasApp.Mobile.Views;
 using FinancasApp.Mobile.Views.Accounts;
 using FinancasApp.Mobile.Views.Auth;
+using FinancasApp.Mobile.Views.Categories;
 using FinancasApp.Mobile.Views.CreditCards;
 using FinancasApp.Mobile.Views.Dashboard;
 using FinancasApp.Mobile.Views.Reports;
 using FinancasApp.Mobile.Views.Transactions;
 using LiveChartsCore;
 using LiveChartsCore.SkiaSharpView;
+using LiveChartsCore.SkiaSharpView.Maui;
 using Microsoft.Extensions.Logging;
 using Refit;
 using SkiaSharp.Views.Maui.Controls.Hosting;
 using SQLite;
-using Microsoft.Maui.Networking; // Para DeviceInfo
+using System.Text.Json;
 
 namespace FinancasApp.Mobile;
 
@@ -31,7 +31,8 @@ public static class MauiProgram
         var builder = MauiApp.CreateBuilder();
         builder
             .UseMauiApp<App>()
-            .UseSkiaSharp()
+            .UseSkiaSharp() // SkiaSharp 3.x
+            .UseLiveCharts() // ◄ REGISTRO OBRIGATÓRIO
             .ConfigureFonts(fonts =>
             {
                 fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
@@ -39,11 +40,13 @@ public static class MauiProgram
                 fonts.AddFont("MaterialIcons-Regular.ttf", "MaterialIcons");
             });
 
+        // 🔧 Configuração Global do LiveCharts (Light Theme)
         LiveCharts.Configure(config => config
             .AddSkiaSharp()
             .AddDefaultMappers()
             .AddLightTheme());
 
+        // 📄 Json Options
         builder.Services.Configure<JsonSerializerOptions>(options =>
         {
             options.PropertyNameCaseInsensitive = true;
@@ -53,19 +56,19 @@ public static class MauiProgram
 
 #if DEBUG
         var apiUrl = DeviceInfo.Current.Platform == DevicePlatform.Android
-            ? "https://10.0.2.2:7043"   // ◄ HTTPS primário (porta 7043 da API)
+            ? "https://10.0.2.2:7043"
             : "https://localhost:7043";
 #else
         var apiUrl = "https://financasapp-api.up.railway.app";
 #endif
 
-        // 🔐 Handler com bypass de certificado (APENAS DEBUG — ignora certificado dev)
+        // 🔐 Handler com bypass de certificado (APENAS DEBUG)
 #if DEBUG
         builder.Services.AddSingleton<HttpClientHandler>(sp =>
         {
             var handler = new HttpClientHandler();
             handler.ServerCertificateCustomValidationCallback =
-                (message, cert, chain, errors) => true; // ◄ Ignora erros de certificado
+                (message, cert, chain, errors) => true;
             return handler;
         });
 #endif
@@ -79,17 +82,14 @@ public static class MauiProgram
                     var path = request.RequestUri?.AbsolutePath ?? "";
                     if (path.Contains("/auth/login") || path.Contains("/auth/register"))
                         return null;
-
                     var token = await SecureStorage.Default.GetAsync("jwt_token");
-                    return string.IsNullOrWhiteSpace(token)
-                        ? null
-                        : $"Bearer {token}";
+                    return string.IsNullOrWhiteSpace(token) ? null : $"Bearer {token}";
                 }
             })
             .ConfigureHttpClient(c =>
             {
                 c.BaseAddress = new Uri(apiUrl);
-                c.Timeout = TimeSpan.FromSeconds(300); // ◄ Timeout maior para testes
+                c.Timeout = TimeSpan.FromSeconds(300);
             })
 #if DEBUG
             .ConfigurePrimaryHttpMessageHandler(sp =>
@@ -109,16 +109,20 @@ public static class MauiProgram
             conn.CreateTableAsync<InvoiceLocal>().Wait();
             conn.CreateTableAsync<TagLocal>().Wait();
             conn.CreateTableAsync<TagAssignmentLocal>().Wait();
+            conn.CreateTableAsync<CategoryLocal>().Wait();
             return conn;
         });
 
-        // ✅ REGISTRO CRÍTICO — REPOSITÓRIO GENÉRICO
+        // ✅ Repositório Genérico
         builder.Services.AddSingleton(typeof(IRepository<>), typeof(Repository<>));
 
-        // 📦 Serviços
+        // 📦 Serviços Mobile
         builder.Services.AddSingleton<ILocalStorageService, SQLiteStorageService>();
         builder.Services.AddSingleton<IAuthService, AuthService>();
         builder.Services.AddSingleton<ISyncService, SyncService>();
+
+        // Repositório específico para Category (já incluso no genérico, mas explícito)
+        builder.Services.AddSingleton<IRepository<CategoryLocal>, Repository<CategoryLocal>>();
 
         // 🧠 ViewModels
         builder.Services.AddTransient<LoginViewModel>();
@@ -129,6 +133,7 @@ public static class MauiProgram
         builder.Services.AddTransient<CreditCardsViewModel>();
         builder.Services.AddTransient<InvoiceDetailViewModel>();
         builder.Services.AddTransient<ReportsViewModel>();
+        builder.Services.AddTransient<CategoriesViewModel>();
 
         // 📱 Pages
         builder.Services.AddTransient<LoginPage>();
@@ -139,12 +144,13 @@ public static class MauiProgram
         builder.Services.AddTransient<CreditCardsPage>();
         builder.Services.AddTransient<InvoiceDetailPage>();
         builder.Services.AddTransient<ReportsPage>();
+        builder.Services.AddTransient<CategoriesPage>();
 
         // 🧭 Shell
         builder.Services.AddSingleton<AppShellViewModel>();
         builder.Services.AddSingleton<AppShell>();
 
-        builder.Logging.AddDebug(); // Logs visíveis no Output
+        builder.Logging.AddDebug();
 
         return builder.Build();
     }

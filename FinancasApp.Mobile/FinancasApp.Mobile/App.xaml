@@ -11,6 +11,7 @@
             </ResourceDictionary.MergedDictionaries>
 
             <!-- Converters globais -->
+            <converters:CategoryTypeConverter x:Key="CategoryTypeConverter" />
             <converters:AmountToColorConverter x:Key="AmountToColorConverter" />
             <!-- Fallback caso queira voltar ao estilo antigo -->
             <x:Boolean x:Key="InverseBoolConverter" />

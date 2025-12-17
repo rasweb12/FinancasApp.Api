@@ -79,11 +79,11 @@ public class AppDbContext : DbContext
             .HasForeignKey(i => i.UserId)
             .OnDelete(DeleteBehavior.Restrict); // ← RESOLVIDO O CICLO
 
-        // Category -> Transactions (1:N) — ADICIONE ISSO
+        // Category -> Transactions (1:N)
         modelBuilder.Entity<Category>()
             .HasMany(c => c.Transactions)
             .WithOne(t => t.Category)
-            .HasForeignKey(t => t.CategoryId)
+            .HasForeignKey(t => t.CategoryId) // Agora Guid?
             .OnDelete(DeleteBehavior.SetNull);
 
         // Monetary Precision

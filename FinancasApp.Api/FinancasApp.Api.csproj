@@ -36,9 +36,7 @@
 
   <ItemGroup>
     <!-- Só mantém pastas que REALMENTE existem e têm arquivos -->
-    <Folder Include="Data\Migrations\" Condition="Exists('Data\Migrations')" />
     <Folder Include="Migrations\" Condition="Exists('Migrations')" />
-    <Folder Include="Repository\" Condition="Exists('Repository')" />
 
     <!-- Se você usa essas pastas no projeto, pode deixar sem condição (mais simples) -->
     <!-- <Folder Include="Data\Migrations\" /> -->

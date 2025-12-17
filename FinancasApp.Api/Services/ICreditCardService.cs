@@ -1,16 +1,15 @@
 ﻿using FinancasApp.Api.DTOs;
-using FinancasApp.Api.Models;
 
 namespace FinancasApp.Api.Services;
 
 public interface ICreditCardService
 {
-    Task<CreditCard?> GetByIdAsync(Guid id, Guid userId);
-    Task<CreditCard> AddAsync(CreditCard card);
-    Task<CreditCard> UpdateAsync(CreditCard card);
-    Task<bool> DeleteAsync(Guid id, Guid userId);
+    Task<List<CreditCardDto>> GetByUserAsync(Guid userId);     // Para endpoints normais
+    Task<List<CreditCardDto>> GetForSyncAsync(Guid userId);    // Para sync (mesmo filtro)
+    Task<List<CreditCardDto>> GetAllAsync(Guid userId);        // ◄ NOVO: Compatibilidade com SyncController
 
-    // Sync
-    Task SyncAsync(List<CreditCardDto> cards, Guid userId);
-    Task<List<CreditCard>> GetAllAsync(Guid userId);
+    Task<CreditCardDto> CreateAsync(CreditCardDto dto, Guid userId);
+    Task UpdateAsync(CreditCardDto dto);
+    Task SoftDeleteAsync(Guid id);
+    Task SyncAsync(List<CreditCardDto> dtos, Guid userId);
 }

@@ -1,26 +1,15 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FinancasApp.Api.DTOs;
 
-public class CreditCardDto : ISyncableDto
+public class CreditCardDto
 {
     public Guid Id { get; set; }
-    public string Name { get; set; } = "";
-    public string Last4Digits { get; set; } = "";
+    public string Name { get; set; } = string.Empty;
+    public string Last4Digits { get; set; } = "0000";
     public decimal CreditLimit { get; set; }
-    public Guid? CurrentInvoiceId { get; set; }
     public int DueDay { get; set; }
     public int ClosingDay { get; set; }
-    public bool IsNew { get; set; }
-    public bool IsDirty { get; set; }
-    public bool IsDeleted { get; set; } = false;
-    public DateTime CreatedAt { get; set; }
+    public bool IsDeleted { get; set; }
     public DateTime UpdatedAt { get; set; }
-
 }
-
-

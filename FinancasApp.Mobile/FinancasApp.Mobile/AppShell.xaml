@@ -1,34 +1,60 @@
 <?xml version="1.0" encoding="utf-8" ?>
-<Shell
-    x:Class="FinancasApp.Mobile.AppShell"
-    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
-    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-    xmlns:auth="clr-namespace:FinancasApp.Mobile.Views.Auth"
-    xmlns:dashboard="clr-namespace:FinancasApp.Mobile.Views.Dashboard"
-    xmlns:accounts="clr-namespace:FinancasApp.Mobile.Views.Accounts"
-    xmlns:creditcards="clr-namespace:FinancasApp.Mobile.Views.CreditCards"
-    xmlns:reports="clr-namespace:FinancasApp.Mobile.Views.Reports"
-    FlyoutBehavior="Flyout">
+<Shell x:Class="FinancasApp.Mobile.AppShell"
+       xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+       xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+       xmlns:auth="clr-namespace:FinancasApp.Mobile.Views.Auth"
+       xmlns:dashboard="clr-namespace:FinancasApp.Mobile.Views.Dashboard"
+       xmlns:accounts="clr-namespace:FinancasApp.Mobile.Views.Accounts"
+       xmlns:creditcards="clr-namespace:FinancasApp.Mobile.Views.CreditCards"
+       xmlns:reports="clr-namespace:FinancasApp.Mobile.Views.Reports"
+       xmlns:transactions="clr-namespace:FinancasApp.Mobile.Views.Transactions"
+       xmlns:categories="clr-namespace:FinancasApp.Mobile.Views.Categories" 
+    Title="FinancasApp"
+       FlyoutBehavior="Flyout">
 
-    <!-- 🔐 LOGIN / REGISTER -->
-    <ShellContent Route="login" ContentTemplate="{DataTemplate auth:LoginPage}" FlyoutItemIsVisible="False" />
-    <ShellContent Route="register" ContentTemplate="{DataTemplate auth:RegisterPage}" FlyoutItemIsVisible="False" />
+    <!-- 🔐 PÁGINAS DE AUTENTICAÇÃO (SEM MENU) -->
+    <ShellContent Route="login"
+                  ContentTemplate="{DataTemplate auth:LoginPage}"
+                  FlyoutItemIsVisible="False" />
+    <ShellContent Route="register"
+                  ContentTemplate="{DataTemplate auth:RegisterPage}"
+                  FlyoutItemIsVisible="False" />
 
-    <!-- 🏠 HOME -->
-    <FlyoutItem Route="home" Title="Início" Icon="home.png" FlyoutItemIsVisible="{Binding IsAuthenticated}">
-        <!-- ROTA INTERNA OBRIGATÓRIA PARA NAVEGAÇÃO ABSOLUTA -->
-        <ShellContent Route="dashboard"
+    <!-- 🏠 MENU LATERAL (VISÍVEL SÓ APÓS LOGIN) -->
+    <FlyoutItem Title="Início" Icon="home.png">
+        <ShellContent Route="home"
                       ContentTemplate="{DataTemplate dashboard:HomePage}" />
     </FlyoutItem>
 
-    <!-- 📂 OUTROS MENUS -->
-    <FlyoutItem Title="Contas" Icon="account_balance.png" FlyoutItemIsVisible="{Binding IsAuthenticated}">
-        <ShellContent Route="accounts" ContentTemplate="{DataTemplate accounts:AccountsPage}" />
+    <FlyoutItem Title="Contas" Icon="account_balance.png">
+        <ShellContent Route="accounts"
+                      ContentTemplate="{DataTemplate accounts:AccountsPage}" />
     </FlyoutItem>
-    <FlyoutItem Title="Cartões" Icon="credit_card.png" FlyoutItemIsVisible="{Binding IsAuthenticated}">
-        <ShellContent Route="creditcards" ContentTemplate="{DataTemplate creditcards:CreditCardsPage}" />
+
+    <!-- ◄ CORRIGIDO: CategoriesPage está na raiz Views/ -->
+    <FlyoutItem Title="Categorias" Icon="category.png">
+        <ShellContent Route="categories"
+                      ContentTemplate="{DataTemplate categories:CategoriesPage}" />
     </FlyoutItem>
-    <FlyoutItem Title="Relatórios" Icon="bar_chart.png" FlyoutItemIsVisible="{Binding IsAuthenticated}">
-        <ShellContent Route="reports" ContentTemplate="{DataTemplate reports:ReportsPage}" />
+
+    <FlyoutItem Title="Cartões de Crédito" Icon="credit_card.png">
+        <ShellContent Route="creditcards"
+                      ContentTemplate="{DataTemplate creditcards:CreditCardsPage}" />
     </FlyoutItem>
+
+    <FlyoutItem Title="Transações" Icon="swap_horiz.png">
+        <ShellContent Route="transactions"
+                      ContentTemplate="{DataTemplate transactions:NewTransactionPage}" />
+        <!-- Lista completa -->
+    </FlyoutItem>
+
+    <FlyoutItem Title="Relatórios" Icon="bar_chart.png">
+        <ShellContent Route="reports"
+                      ContentTemplate="{DataTemplate reports:ReportsPage}" />
+    </FlyoutItem>
+
+    <!-- ➕ ROTAS PARA CADASTROS -->
+    <ShellContent Route="newtransaction"
+                  ContentTemplate="{DataTemplate transactions:NewTransactionPage}" />
+
 </Shell>
