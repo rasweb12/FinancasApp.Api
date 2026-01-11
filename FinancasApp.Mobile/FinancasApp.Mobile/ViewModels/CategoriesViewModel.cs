@@ -73,7 +73,7 @@ public partial class CategoriesViewModel : ObservableObject
                 Name = name.Trim(),
                 Type = type,
                 Icon = icon,
-                IsDirty = true,
+                IsDirty = true, // ◄ FORÇADO
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
@@ -81,17 +81,34 @@ public partial class CategoriesViewModel : ObservableObject
             await _local.SaveCategoryAsync(category);
             await LoadCategoriesAsync();
 
-            // ◄ SYNC IMEDIATO (dentro do try principal)
-            await _sync.SyncAllAsync();
+            // SYNC FORÇADO COM VERIFICAÇÃO
+            var syncSuccess = await ForceSyncAsync();
+
+            if (syncSuccess)
+                await Shell.Current.DisplayAlert("Sucesso", "Categoria criada e sincronizada na nuvem!", "OK");
+            else
+                await Shell.Current.DisplayAlert("Aviso", "Categoria salva localmente. Sync falhou — tente novamente.", "OK");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Falha ao adicionar categoria ou sincronizar");
-            await Shell.Current.DisplayAlert("Erro", "Categoria salva localmente. Sync falhou — tente novamente mais tarde.", "OK");
+            _logger.LogError(ex, "Erro ao adicionar categoria");
+            await Shell.Current.DisplayAlert("Erro", "Falha ao salvar categoria", "OK");
         }
         finally
         {
             IsBusy = false;
+        }
+    }
+    private async Task<bool> ForceSyncAsync()
+    {
+        try
+        {
+            await _sync.SyncAllAsync();
+            return true;
+        }
+        catch
+        {
+            return false;
         }
     }
 

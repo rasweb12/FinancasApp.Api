@@ -1,8 +1,6 @@
-﻿// FinancasApp.Api/Mappers/MappingProfile.cs
-using AutoMapper;
+﻿using AutoMapper;
 using FinancasApp.Api.DTOs;
 using FinancasApp.Api.Models;
-using Umbraco.Cms.Core.Models.Membership;
 
 namespace FinancasApp.Api.Mappers;
 
@@ -10,21 +8,34 @@ public class MappingProfile : Profile
 {
     public MappingProfile()
     {
-        // Account
+        // =====================
+        // ACCOUNT
+        // =====================
         CreateMap<Account, AccountDto>().ReverseMap();
 
-        // Transaction
+        // =====================
+        // TRANSACTION
+        // =====================
         CreateMap<Transaction, TransactionDto>().ReverseMap();
 
-        // CreditCard
+        // =====================
+        // CREDIT CARD
+        // =====================
         CreateMap<CreditCard, CreditCardDto>().ReverseMap();
 
-        // Invoice
+        // =====================
+        // INVOICE
+        // =====================
         CreateMap<Invoice, InvoiceDto>().ReverseMap();
 
-        // User (opcional, mas bom ter)
-        // Comente ou remova temporariamente até criar o DTO
-        //CreateMap<User, UserDto>().ReverseMap();
+        // =====================
+        // CATEGORY  ✅ (ERA O QUE FALTAVA)
+        // =====================
+        CreateMap<Category, CategoryDto>().ReverseMap();
 
+        // =====================
+        // USER (SE NECESSÁRIO)
+        // =====================
+        // CreateMap<User, UserDto>().ReverseMap();
     }
 }

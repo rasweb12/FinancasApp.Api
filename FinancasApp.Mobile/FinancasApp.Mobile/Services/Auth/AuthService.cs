@@ -18,6 +18,7 @@ public class AuthService : IAuthService
     {
         _api = api;
         _logger = logger;
+        _ = LoadTokenAsync(); // Carrega token ao iniciar
     }
 
     public async Task<LoginResult> LoginAsync(string email, string password)
@@ -26,59 +27,36 @@ public class AuthService : IAuthService
         {
             var response = await _api.LoginAsync(new LoginRequest
             {
-                Email = email.Trim(),
+                Email = email.Trim().ToLowerInvariant(),
                 Password = password
             });
 
-            // 🔴 Falha HTTP
             if (!response.IsSuccessStatusCode)
             {
-                _logger.LogWarning(
-                    "Falha no login | StatusCode: {StatusCode} | Content: {Content}",
-                    response.StatusCode,
-                    response.Error?.Content
-                );
-
+                _logger.LogWarning("Falha no login | Status: {Status}", response.StatusCode);
                 return response.StatusCode switch
                 {
                     HttpStatusCode.Unauthorized => LoginResult.Error("E-mail ou senha inválidos"),
                     HttpStatusCode.BadRequest => LoginResult.Error("Dados inválidos"),
-                    _ => LoginResult.Error("Erro ao comunicar com o servidor")
+                    _ => LoginResult.Error("Erro no servidor")
                 };
             }
 
             var token = response.Content?.Token;
-
             if (string.IsNullOrWhiteSpace(token))
-                return LoginResult.Error("Token inválido retornado pela API");
+                return LoginResult.Error("Token não retornado");
 
             await SaveTokenAsync(token);
+            _logger.LogInformation("Login sucesso | Token salvo | Email: {Email}", email);
 
-            _logger.LogInformation("Login realizado com sucesso: {Email}", email);
-
-            // 🔔 Notifica Shell / App
             WeakReferenceMessenger.Default.Send(new LoginSuccessMessage());
 
             return LoginResult.Ok(token);
         }
-        catch (ApiException apiEx)
-        {
-            _logger.LogError(apiEx,
-                "Erro HTTP no login | StatusCode: {StatusCode} | Content: {Content}",
-                apiEx.StatusCode,
-                apiEx.Content);
-
-            return LoginResult.Error("Erro ao comunicar com o servidor");
-        }
-        catch (TaskCanceledException)
-        {
-            _logger.LogError("Timeout no login");
-            return LoginResult.Error("Servidor demorou para responder");
-        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Erro inesperado no login");
-            return LoginResult.Error("Erro interno. Tente novamente.");
+            _logger.LogError(ex, "Erro no login");
+            return LoginResult.Error("Falha na comunicação");
         }
     }
 
@@ -86,26 +64,23 @@ public class AuthService : IAuthService
     {
         Token = token;
         await SecureStorage.Default.SetAsync("jwt_token", token);
+        _logger.LogInformation("Token salvo em SecureStorage | Length: {Length}", token.Length);
     }
 
     public async Task LoadTokenAsync()
     {
         Token = await SecureStorage.Default.GetAsync("jwt_token");
+        _logger.LogInformation("Token carregado | {Status}", string.IsNullOrWhiteSpace(Token) ? "NULO" : "VÁLIDO");
     }
 
-    public Task<string?> GetTokenAsync()
-        => Task.FromResult(Token);
+    public Task<string?> GetTokenAsync() => Task.FromResult(Token);
 
     public async Task LogoutAsync()
     {
         SecureStorage.Default.Remove("jwt_token");
         Token = null;
-
-        _logger.LogInformation("Logout efetuado");
-
-        // 🔔 Notifica Shell / App
+        _logger.LogInformation("Logout completo | Token removido");
         WeakReferenceMessenger.Default.Send(new LogoutMessage());
-
         await Task.CompletedTask;
     }
 }

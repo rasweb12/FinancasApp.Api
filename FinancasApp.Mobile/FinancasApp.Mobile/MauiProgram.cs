@@ -31,8 +31,8 @@ public static class MauiProgram
         var builder = MauiApp.CreateBuilder();
         builder
             .UseMauiApp<App>()
-            .UseSkiaSharp() // SkiaSharp 3.x
-            .UseLiveCharts() // ◄ REGISTRO OBRIGATÓRIO
+            .UseSkiaSharp()
+            .UseLiveCharts()
             .ConfigureFonts(fonts =>
             {
                 fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
@@ -40,13 +40,11 @@ public static class MauiProgram
                 fonts.AddFont("MaterialIcons-Regular.ttf", "MaterialIcons");
             });
 
-        // 🔧 Configuração Global do LiveCharts (Light Theme)
         LiveCharts.Configure(config => config
             .AddSkiaSharp()
             .AddDefaultMappers()
             .AddLightTheme());
 
-        // 📄 Json Options
         builder.Services.Configure<JsonSerializerOptions>(options =>
         {
             options.PropertyNameCaseInsensitive = true;
@@ -62,7 +60,6 @@ public static class MauiProgram
         var apiUrl = "https://financasapp-api.up.railway.app";
 #endif
 
-        // 🔐 Handler com bypass de certificado (APENAS DEBUG)
 #if DEBUG
         builder.Services.AddSingleton<HttpClientHandler>(sp =>
         {
@@ -73,7 +70,7 @@ public static class MauiProgram
         });
 #endif
 
-        // 🔐 Refit + JWT
+        // 🔐 Refit + JWT (sem log temporário para evitar erros)
         builder.Services
             .AddRefitClient<IApiService>(new RefitSettings
             {
@@ -82,6 +79,7 @@ public static class MauiProgram
                     var path = request.RequestUri?.AbsolutePath ?? "";
                     if (path.Contains("/auth/login") || path.Contains("/auth/register"))
                         return null;
+
                     var token = await SecureStorage.Default.GetAsync("jwt_token");
                     return string.IsNullOrWhiteSpace(token) ? null : $"Bearer {token}";
                 }
@@ -92,10 +90,7 @@ public static class MauiProgram
                 c.Timeout = TimeSpan.FromSeconds(300);
             })
 #if DEBUG
-            .ConfigurePrimaryHttpMessageHandler(sp =>
-                sp.GetRequiredService<HttpClientHandler>());
-#else
-            .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler());
+            .ConfigurePrimaryHttpMessageHandler(sp => sp.GetRequiredService<HttpClientHandler>());
 #endif
 
         // 💾 SQLite
@@ -121,7 +116,7 @@ public static class MauiProgram
         builder.Services.AddSingleton<IAuthService, AuthService>();
         builder.Services.AddSingleton<ISyncService, SyncService>();
 
-        // Repositório específico para Category (já incluso no genérico, mas explícito)
+        // Repositório específico para Category
         builder.Services.AddSingleton<IRepository<CategoryLocal>, Repository<CategoryLocal>>();
 
         // 🧠 ViewModels

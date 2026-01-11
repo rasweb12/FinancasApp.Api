@@ -96,29 +96,38 @@ public class UsersController : ControllerBase
 
     private string GenerateJwtToken(User user)
     {
+        var jwtSection = _config.GetSection("Jwt");
+
+        var key = jwtSection.GetValue<string>("Key")
+            ?? throw new Exception("JWT Key não configurada");
+
         var claims = new[]
         {
-            new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-            new Claim(ClaimTypes.Email, user.Email),
-            new Claim(ClaimTypes.Name, user.FullName ?? string.Empty)
-        };
+        new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+        new Claim(ClaimTypes.Email, user.Email),
+        new Claim(ClaimTypes.Name, user.FullName ?? "")
+    };
 
-        var keyString = _config["Jwt:Key"]
-            ?? "minha-chave-super-secreta-de-32-caracteres-1234567890";
+        var signingKey = new SymmetricSecurityKey(
+            Encoding.UTF8.GetBytes(key)
+        );
 
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(keyString));
-        var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+        var creds = new SigningCredentials(signingKey, SecurityAlgorithms.HmacSha256);
 
         var token = new JwtSecurityToken(
-            issuer: _config["Jwt:Issuer"] ?? "FinancasAppApi",
-            audience: _config["Jwt:Audience"] ?? "FinancasAppMobile",
+            issuer: jwtSection["Issuer"],
+            audience: jwtSection["Audience"],
             claims: claims,
-            expires: DateTime.UtcNow.AddDays(7),
+            expires: DateTime.UtcNow.AddMinutes(
+                jwtSection.GetValue<int>("ExpireMinutes")
+            ),
             signingCredentials: creds
         );
 
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
+
+
 }
 
 // DTOs — fora da classe pra não dar conflito

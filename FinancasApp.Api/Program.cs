@@ -1,5 +1,6 @@
 ﻿using FinancasApp.Api.Data;
 using FinancasApp.Api.Mappers;
+using FinancasApp.Api.Models;
 using FinancasApp.Api.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -9,12 +10,14 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// ============== CONTROLLERS + SWAGGER ==============
+// ================= CONTROLLERS + SWAGGER =================
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
+
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new() { Title = "FinancasApp API", Version = "v1" });
+
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Description = "JWT Authorization. Ex: Bearer {token}",
@@ -23,74 +26,83 @@ builder.Services.AddSwaggerGen(c =>
         Type = SecuritySchemeType.ApiKey,
         Scheme = "Bearer"
     });
+
     c.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
         {
             new OpenApiSecurityScheme
             {
-                Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
             },
             Array.Empty<string>()
         }
     });
 });
 
-// ============== BANCO DE DADOS ==============
+// ================= DATABASE =================
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"))
+);
 
-// ============== JWT ==============
-var key = builder.Configuration["Jwt:Key"]
-          ?? "sua-chave-super-secreta-minimo-32-caracteres-1234567890";
+// ================= JWT =================
+var jwtSection = builder.Configuration.GetSection("Jwt");
 
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+var jwtKey = jwtSection.GetValue<string>("Key")
+    ?? throw new InvalidOperationException("JWT:Key não configurada");
+
+builder.Services
+    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
+        options.RequireHttpsMetadata = false;
+        options.SaveToken = true;
+
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
             ValidateAudience = true,
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
-            ValidIssuer = builder.Configuration["Jwt:Issuer"] ?? "FinancasApp",
-            ValidAudience = builder.Configuration["Jwt:Audience"] ?? "FinancasAppMobile",
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key)),
+
+            ValidIssuer = jwtSection["Issuer"],
+            ValidAudience = jwtSection["Audience"],
+
+            IssuerSigningKey = new SymmetricSecurityKey(
+                Encoding.UTF8.GetBytes(jwtKey)
+            ),
+
             ClockSkew = TimeSpan.Zero
         };
     });
 
 builder.Services.AddAuthorization();
 
-// ============== SERVICES + MAPPERS ==============
+// ================= SERVICES =================
 builder.Services.AddScoped<IAccountService, AccountService>();
 builder.Services.AddScoped<ITransactionService, TransactionService>();
-builder.Services.AddScoped<ICreditCardService, CreditCardService>(); // ◄ CONFIRMADO
+builder.Services.AddScoped<ICreditCardService, CreditCardService>();
 builder.Services.AddScoped<IInvoiceService, InvoiceService>();
-builder.Services.AddScoped<ICategoryService, CategoryService>();   // ◄ NOVO: CATEGORIAS
+builder.Services.AddScoped<ICategoryService, CategoryService>();
+
 builder.Services.AddAutoMapper(typeof(MappingProfile));
 
-// ============== APP ==============
+// ================= APP =================
 var app = builder.Build();
 
-// Pipeline de Middleware — ORDEM CORRETA E CONSISTENTE
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection(); // Sempre (redireciona HTTP → HTTPS em prod)
-app.UseAuthentication();  // ◄ Autenticação sempre
-app.UseAuthorization();   // ◄ Autorização sempre
+app.UseHttpsRedirection();
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapControllers();
-
-// MIGRAÇÃO AUTOMÁTICA — APENAS EM DESENVOLVIMENTO
-if (app.Environment.IsDevelopment())
-{
-    using var scope = app.Services.CreateScope();
-    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    db.Database.Migrate();
-}
 
 app.Run();
