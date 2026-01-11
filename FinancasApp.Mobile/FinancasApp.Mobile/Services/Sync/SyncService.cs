@@ -63,7 +63,8 @@ public class SyncService : ISyncService
                     .ToList()
             };
 
-            SyncResponseDto serverData;
+            SyncResponseDto serverData = new SyncResponseDto(); // ◄ INICIALIZAÇÃO OBRIGATÓRIA
+
             _logger.LogInformation("📤 Dados dirty para upload: Categories={Count}", request.Categories.Count);
 
             if (request.HasAnyDirtyData())
@@ -84,26 +85,27 @@ public class SyncService : ISyncService
                     throw new Exception("Falha no servidor");
                 }
 
+                serverData = response.Content;
                 _logger.LogInformation("⬆️⬇️ Sync sucesso | Recebido do servidor");
             }
             else
             {
                 _logger.LogInformation("⬇️ Nenhum dado dirty — apenas download");
                 serverData = await DownloadAllAsync();
-                _logger.LogInformation("⬇️ Apenas download");
+                _logger.LogInformation("⬇️ Apenas download concluído");
             }
 
             await ApplyServerDataAsync(serverData);
             _logger.LogInformation("✅ Sync concluído com sucesso");
         }
-        catch (ApiException apiEx) when (apiEx.StatusCode == HttpStatusCode.Unauthorized) // ◄ CORRIGIDO
+        catch (ApiException apiEx) when (apiEx.StatusCode == HttpStatusCode.Unauthorized)
         {
             await HandleUnauthorizedAsync();
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "❌ Erro no sync");
-            throw;
+            _logger.LogError(ex, "❌ Erro crítico no sync");
+            await Shell.Current.DisplayAlert("Sync Falhou", "Erro ao sincronizar. Verifique conexão ou faça login novamente.", "OK");
         }
     }
 
@@ -140,7 +142,7 @@ public class SyncService : ISyncService
             var response = await call();
             return response.Content;
         }
-        catch (ApiException ex) when (ex.StatusCode == HttpStatusCode.Unauthorized) // ◄ CORRIGIDO
+        catch (ApiException ex) when (ex.StatusCode == HttpStatusCode.Unauthorized)
         {
             await HandleUnauthorizedAsync();
             return null;
@@ -163,7 +165,7 @@ public class SyncService : ISyncService
         );
     }
 
-    // Métodos Apply (iguais ao anterior, com IsDirty = false no final)
+    // Métodos Apply (mantidos com IsDirty = false no final)
     private async Task ApplyAccountsAsync(List<AccountDto> server)
     {
         var local = await _local.GetAccountsAsync();
