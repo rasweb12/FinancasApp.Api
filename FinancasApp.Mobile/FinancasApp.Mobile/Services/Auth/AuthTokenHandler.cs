@@ -1,5 +1,4 @@
-﻿// Services/AuthTokenHandler.cs
-using System.Net.Http.Headers;
+﻿using System.Net.Http.Headers;
 
 namespace FinancasApp.Mobile.Services;
 
@@ -9,7 +8,7 @@ public class AuthTokenHandler : DelegatingHandler
     {
         var path = request.RequestUri?.AbsolutePath ?? "";
 
-        // Não adiciona token para login/register
+        // Não adiciona token para endpoints públicos
         if (!path.Contains("/auth/login", StringComparison.OrdinalIgnoreCase) &&
             !path.Contains("/auth/register", StringComparison.OrdinalIgnoreCase))
         {

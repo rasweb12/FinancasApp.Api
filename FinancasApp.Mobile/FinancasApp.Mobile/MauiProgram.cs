@@ -1,4 +1,5 @@
 ﻿using FinancasApp.Mobile.Models.Local;
+using FinancasApp.Mobile.Services;
 using FinancasApp.Mobile.Services.Api;
 using FinancasApp.Mobile.Services.Auth;
 using FinancasApp.Mobile.Services.LocalDatabase;
@@ -70,27 +71,27 @@ public static class MauiProgram
         });
 #endif
 
-        // 🔐 Refit + JWT (sem log temporário para evitar erros)
+        // 🔐 Refit + JWT (usando DelegatingHandler dedicado)
         builder.Services
-            .AddRefitClient<IApiService>(new RefitSettings
-            {
-                AuthorizationHeaderValueGetter = async (request, _) =>
-                {
-                    var path = request.RequestUri?.AbsolutePath ?? "";
-                    if (path.Contains("/auth/login") || path.Contains("/auth/register"))
-                        return null;
+            .AddSingleton<AuthTokenHandler>();  // ◄ Registra o handler
 
-                    var token = await SecureStorage.Default.GetAsync("jwt_token");
-                    return string.IsNullOrWhiteSpace(token) ? null : $"Bearer {token}";
-                }
-            })
+        builder.Services
+            .AddRefitClient<IApiService>()
             .ConfigureHttpClient(c =>
             {
                 c.BaseAddress = new Uri(apiUrl);
                 c.Timeout = TimeSpan.FromSeconds(300);
             })
+            .ConfigurePrimaryHttpMessageHandler<AuthTokenHandler>()  // ◄ Usa o handler personalizado
 #if DEBUG
-            .ConfigurePrimaryHttpMessageHandler(sp => sp.GetRequiredService<HttpClientHandler>());
+            .ConfigurePrimaryHttpMessageHandler(sp =>
+            {
+                var handler = new HttpClientHandler();
+                handler.ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true;
+                return new AuthTokenHandler { InnerHandler = handler };  // Encadeia bypass + token
+            });
+#else
+    .ConfigurePrimaryHttpMessageHandler<AuthTokenHandler>();
 #endif
 
         // 💾 SQLite
