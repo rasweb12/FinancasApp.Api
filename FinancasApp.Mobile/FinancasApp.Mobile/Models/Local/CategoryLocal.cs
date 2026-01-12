@@ -1,35 +1,30 @@
 ﻿using SQLite;
 using System;
 
-namespace FinancasApp.Mobile.Models.Local
+namespace FinancasApp.Mobile.Models.Local;
+
+public enum CategoryType
 {
-    public enum CategoryType
-    {
-        Expense,
-        Income
-    }
+    Expense,
+    Income
+}
 
-    [Table("Categories")]
-    public class CategoryLocal : BaseEntity  // ◄ AQUI ESTAVA O PROBLEMA! AGORA CORRIGIDO
-    {
-        public Guid? UserId { get; set; }
+[Table("Categories")]
+public class CategoryLocal : BaseEntity
+{
+    [PrimaryKey]
+    public Guid Id { get; set; } = Guid.NewGuid();
 
-        [Indexed] // Melhora performance em buscas
-        public string Name { get; set; } = string.Empty;
+    public Guid? UserId { get; set; }
 
-        public CategoryType Type { get; set; } = CategoryType.Expense;
+    [Indexed]
+    public string Name { get; set; } = string.Empty;
 
-        public string Icon { get; set; } = "other.png";
+    public CategoryType Type { get; set; } = CategoryType.Expense;
 
-        public bool IsSystem { get; set; } = false;
+    public string Icon { get; set; } = "other.png";
 
-        public int TransactionCount { get; set; } = 0;
+    public bool IsSystem { get; set; } = false;
 
-        // Flags de sincronização (herdadas de BaseEntity)
-        // public bool IsDirty { get; set; } = true;
-        // public bool IsDeleted { get; set; } = false;
-        // Não precisa mais declarar
-        // public DateTime CreatedAt { get; set; }
-        // public DateTime UpdatedAt { get; set; }
-    }
+    public int TransactionCount { get; set; } = 0;
 }

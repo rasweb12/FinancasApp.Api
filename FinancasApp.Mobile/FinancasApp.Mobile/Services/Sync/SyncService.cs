@@ -63,14 +63,19 @@ public class SyncService : ISyncService
                     .ToList()
             };
 
-            SyncResponseDto serverData = new SyncResponseDto(); // ◄ INICIALIZAÇÃO OBRIGATÓRIA
+            _logger.LogInformation("📤 Itens dirty para upload:");
+            _logger.LogInformation("   - Categories: {Count}", request.Categories.Count);
+            if (request.Categories.Any())
+            {
+                foreach (var cat in request.Categories)
+                    _logger.LogInformation("      - {Name} (Dirty: true)", cat.Name);
+            }
 
-            _logger.LogInformation("📤 Dados dirty para upload: Categories={Count}", request.Categories.Count);
+            SyncResponseDto serverData = new SyncResponseDto();
 
             if (request.HasAnyDirtyData())
             {
-                _logger.LogInformation("⬆️ Enviando {Count} categorias dirty", request.Categories.Count);
-
+                _logger.LogInformation("⬆️ Enviando dados para a API...");
                 var response = await _api.SyncAllAsync(request);
 
                 if (response.StatusCode == HttpStatusCode.Unauthorized)
@@ -86,13 +91,12 @@ public class SyncService : ISyncService
                 }
 
                 serverData = response.Content;
-                _logger.LogInformation("⬆️⬇️ Sync sucesso | Recebido do servidor");
+                _logger.LogInformation("⬆️ Upload sucesso | Recebido {Count} itens do servidor", serverData.Categories.Count);
             }
             else
             {
-                _logger.LogInformation("⬇️ Nenhum dado dirty — apenas download");
+                _logger.LogWarning("⬇️ Nenhum dado dirty detectado — apenas download");
                 serverData = await DownloadAllAsync();
-                _logger.LogInformation("⬇️ Apenas download concluído");
             }
 
             await ApplyServerDataAsync(serverData);

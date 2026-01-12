@@ -1,5 +1,4 @@
-﻿// CategoryService.cs
-using AutoMapper;
+﻿using AutoMapper;
 using FinancasApp.Api.Data;
 using FinancasApp.Api.DTOs;
 using FinancasApp.Api.Models;
@@ -26,26 +25,30 @@ public class CategoryService : ICategoryService
 
         return _mapper.Map<List<CategoryDto>>(entities);
     }
+
     public async Task<List<CategoryDto>> GetAllAsync(Guid userId)
     {
-        // Mesmo filtro que GetByUserAsync
+        // Mesmo filtro que GetByUserAsync (para compatibilidade)
         return await GetByUserAsync(userId);
     }
+
     public async Task<List<CategoryDto>> GetForSyncAsync(Guid userId)
     {
-        var entities = await _context.Categories
-            .Where(c => (c.UserId == userId || c.IsSystem) && !c.IsDeleted)
-            .ToListAsync();
-
-        return _mapper.Map<List<CategoryDto>>(entities);
+        return await GetByUserAsync(userId);
     }
 
-    public async Task<CategoryDto> CreateAsync(CategoryDto dto, Guid userId)
+    public async Task<CategoryDto> CreateAsync(CreateCategoryRequest request, Guid userId)
     {
-        var entity = _mapper.Map<Category>(dto);
-        entity.UserId = dto.IsSystem ? null : userId;
-        entity.CreatedAt = DateTime.UtcNow;
-        entity.UpdatedAt = DateTime.UtcNow;
+        var entity = new Category
+        {
+            Name = request.Name,
+            Type = request.Type,
+            Icon = request.Icon,
+            UserId = userId,                    // Sempre associado ao usuário (IsSystem = false)
+            IsSystem = false,                   // Criação manual = não system
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
 
         _context.Categories.Add(entity);
         await _context.SaveChangesAsync();
@@ -85,6 +88,8 @@ public class CategoryService : ICategoryService
             {
                 entity = _mapper.Map<Category>(dto);
                 entity.UserId = dto.IsSystem ? null : userId;
+                entity.CreatedAt = dto.UpdatedAt;
+                entity.UpdatedAt = dto.UpdatedAt;
                 _context.Categories.Add(entity);
             }
             else if (dto.IsDeleted)

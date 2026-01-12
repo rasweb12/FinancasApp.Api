@@ -73,26 +73,31 @@ public partial class CategoriesViewModel : ObservableObject
                 Name = name.Trim(),
                 Type = type,
                 Icon = icon,
-                IsDirty = true, // ◄ FORÇADO
+                IsDirty = true,
+                IsNew = true,                  // Ajuda no filtro
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
 
             await _local.SaveCategoryAsync(category);
+            _logger.LogInformation("Categoria salva localmente | Id: {Id} | IsDirty: true", category.Id);
+
             await LoadCategoriesAsync();
 
-            // SYNC FORÇADO COM VERIFICAÇÃO
-            var syncSuccess = await ForceSyncAsync();
+            // VERIFICAÇÃO ANTES DO SYNC
+            var allCategories = await _local.GetCategoriesAsync();
+            var dirtyCount = allCategories.Count(x => x.IsDirty);
+            _logger.LogInformation("Categorias dirty antes do sync: {Count}", dirtyCount);
 
-            if (syncSuccess)
-                await Shell.Current.DisplayAlert("Sucesso", "Categoria criada e sincronizada na nuvem!", "OK");
-            else
-                await Shell.Current.DisplayAlert("Aviso", "Categoria salva localmente. Sync falhou — tente novamente.", "OK");
+            // SYNC FORÇADO
+            await _sync.SyncAllAsync();
+
+            await Shell.Current.DisplayAlert("Sucesso", "Categoria criada e sincronizada na nuvem!", "OK");
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Erro ao adicionar categoria");
-            await Shell.Current.DisplayAlert("Erro", "Falha ao salvar categoria", "OK");
+            await Shell.Current.DisplayAlert("Erro", "Falha ao salvar ou sincronizar", "OK");
         }
         finally
         {

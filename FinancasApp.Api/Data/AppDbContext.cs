@@ -65,6 +65,13 @@ public class AppDbContext : DbContext
             .HasForeignKey(c => c.UserId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        // Corrige shadow property duplicada (CurrentInvoiceId1)
+        modelBuilder.Entity<CreditCard>()
+            .HasOne(c => c.CurrentInvoice)
+            .WithOne()
+            .HasForeignKey<CreditCard>(c => c.CurrentInvoiceId)
+            .OnDelete(DeleteBehavior.Restrict);
+
         // Invoice -> CreditCard (1:N)
         modelBuilder.Entity<Invoice>()
             .HasOne(i => i.CreditCard)
@@ -86,26 +93,25 @@ public class AppDbContext : DbContext
             .HasForeignKey(t => t.CategoryId) // Agora Guid?
             .OnDelete(DeleteBehavior.SetNull);
 
-        // Monetary Precision
         modelBuilder.Entity<Transaction>()
-            .Property(t => t.Amount)
-            .HasPrecision(18, 2);
+                .Property(t => t.Amount)
+                .HasPrecision(18, 2);
 
         modelBuilder.Entity<Account>()
-            .Property(a => a.Balance)
-            .HasPrecision(18, 2);
+                .Property(a => a.Balance)
+                .HasPrecision(18, 2);
 
         modelBuilder.Entity<CreditCard>()
-            .Property(c => c.CreditLimit)
-            .HasPrecision(18, 2);
+                .Property(c => c.CreditLimit)
+                .HasPrecision(18, 2);
 
         modelBuilder.Entity<Invoice>()
-            .Property(i => i.Total)
-            .HasPrecision(18, 2);
+                .Property(i => i.Total)
+                .HasPrecision(18, 2);
 
         modelBuilder.Entity<Invoice>()
-            .Property(i => i.PaidAmount)
-            .HasPrecision(18, 2);
+                .Property(i => i.PaidAmount)
+                .HasPrecision(18, 2);
 
         // Índices para performance
         modelBuilder.Entity<Account>()
@@ -119,6 +125,13 @@ public class AppDbContext : DbContext
 
         modelBuilder.Entity<Invoice>()
             .HasIndex(i => new { i.UserId, i.CreditCardId, i.Month, i.Year });
+
+        // Precisão decimal (evita truncamento silencioso)
+        modelBuilder.Entity<Account>()
+            .Property(a => a.InitialBalance)
+            .HasPrecision(18, 2);
+
+
     }
 
     // Auto-update de UpdatedAt para ISyncableEntity

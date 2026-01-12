@@ -37,24 +37,28 @@ public class CategoriesController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<ActionResult<CategoryDto>> CreateCategory(CategoryDto dto)
+    public async Task<ActionResult<CategoryDto>> CreateCategory([FromBody] CreateCategoryRequest request)
     {
         var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value!);
-        var created = await _service.CreateAsync(dto, userId);
+
+        var created = await _service.CreateAsync(request, userId);
+
         return CreatedAtAction(nameof(GetCategory), new { id = created.Id }, created);
     }
 
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<CategoryDto>> GetCategory(Guid id)
     {
-        // Implementar GetById se necessário
-        return Ok();
+        // TODO: Implementar GetById no service se necessário
+        // Por enquanto, retorna NotFound ou busca no GetByUserAsync
+        return NotFound(); // ou implementar busca específica
     }
 
     [HttpPut("{id:guid}")]
-    public async Task<IActionResult> UpdateCategory(Guid id, CategoryDto dto)
+    public async Task<IActionResult> UpdateCategory(Guid id, [FromBody] CategoryDto dto)
     {
-        if (id != dto.Id) return BadRequest();
+        if (id != dto.Id) return BadRequest("IDs não coincidem");
+
         await _service.UpdateAsync(dto);
         return NoContent();
     }
